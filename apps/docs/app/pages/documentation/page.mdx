@@ -1,0 +1,32 @@
+import MdxLayout from "../../components/mdx-layout";
+
+
+
+# Documentation
+Ora is written in TypeScript and deployed in JavaScript. This page documents Ora's architecture.
+
+## Expressions
+Ora uses objects (class instances) to represent expressions. All these objects inherit from the abstract class `Expression`. As its name suggests, instances of `Expression` represent expressions. Ora natively implements the following expressions:
+
+1. `Integer`
+2. `BigInteger`
+3. `Float`
+4. `BigFloat`
+5. `Fraction`
+6. `BigFraction`
+7. `Complex`
+8. `BigComplex`
+9. `Sym`
+10. `Constant`
+11. `AlgebraicOp`
+12. `Relation`
+13. `LogicOp`
+14. `SetOp`
+
+
+
+
+
+export default function MDXPage({ children }) {
+	return <MdxLayout>{children}</MdxLayout>
+}

@@ -10,15 +10,14 @@
   }
 }
 
+html {
+  font-size: 14px;
+}
+
 html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
 }
 
 * {
@@ -27,24 +26,50 @@ body {
   margin: 0;
 }
 
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: KaTeX_main;
+}
+
+code {
+  font-family: KaTeX_Typewriter;
+}
+
+h1 {
+  text-align: center;
+}
+
+h1 {
+  margin: 2vh 0;
+}
+
+main {
+  padding: 5vw;
+}
+
+article {
+  padding: 5vw;
+}
+
+p {
+  margin-bottom: 2vh;
+}
+
+
 a {
   color: inherit;
   text-decoration: none;
 }
 
-.imgDark {
-  display: none;
+ol {
+  list-style:decimal;
+  margin: 5px 5vw;
 }
+
 
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
-  }
-
-  .imgLight {
-    display: none;
-  }
-  .imgDark {
-    display: unset;
   }
 }
