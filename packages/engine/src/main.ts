@@ -1,74 +1,61 @@
-/**
- * An object corresponding to an expression.
- */
-abstract class Expression {}
+enum EXPR {
+	INTEGER,
+	BIG_INTEGER,
+	REAL,
+}
 
-/**
- * An object corresponding to a floating
- * point value.
- */
-class Float extends Expression {
-	value: number;
+/** An object corresponding to an Expression. */
+abstract class Expression {
+	abstract kind(): EXPR;
+}
+
+/** An object corresponding to an Integer. */
+class Integer extends Expression {
+	kind(): EXPR {
+		return EXPR.INTEGER;
+	}
+	/** The value of this integer. */
+	_value: number;
 	constructor(value: number) {
 		super();
-		this.value = value;
+		this._value = Math.floor(value);
 	}
 }
 
-/** Returns a new float expression. */
-export function float(value: number) {
-	return new Float(value);
-}
-
-/**
- * An object corresponding to an integer.
- */
-class Integer extends Expression {
-  value: number;
-  constructor(n: number) {
-    super();
-    this.value = Math.floor(n);
-  }
-}
-
-type AlgebraicOperator = '+' | '-' | '*' | '/';
-
-/**
- * An object representing an expression 
- * corresponding to an algebraic
- * operation.
- */
-export class AlgebraicOp extends Expression {
-	op: AlgebraicOperator
-	args: Expression[];
-	constructor(op: AlgebraicOperator, args: Expression[]) {
-		super();
-		this.op = op;
-		this.args = args;
-	}
-}
-
-/** An object corresponding to a sum. */
-export class Sum extends AlgebraicOp {
-	constructor(args: Expression[]) {
-		super('+', args);
-	}
-}
-
-/** Returns a new sum. */
-export function sum(args: Expression[]) {
-	return new Sum(args);
-}
-
-class RelationOp {}
-
-class LogicOp {}
-
-class SetOp {}
-
-/**
- * Returns a new Integer object.
- */
+/** Returns a new Integer. */
 export function int(value: number) {
-  return new Integer(value);
+	return new Integer(value);
 }
+
+/** An object corresponding to a Big Integer. */
+export class BigInteger extends Expression {
+	kind(): EXPR {
+		return EXPR.BIG_INTEGER;
+	}
+	/** The value of this big integer. */
+	_value: bigint;
+	constructor(value: bigint) {
+		super();
+		this._value = value;
+	}
+}
+
+/** An object corresponding to a floating point number. */
+export class Real extends Expression {
+	kind(): EXPR {
+		return EXPR.REAL;
+	}
+	/** The value of this real number. */
+	_value: number;
+	constructor(value: number) {
+		super();
+		this._value = value;
+	}
+}
+
+/** Returns a new Real. */
+export function real(value: number) {
+	return new Real(value);
+}
+
+

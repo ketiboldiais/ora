@@ -1,28 +1,68 @@
 import MdxLayout from "../../components/mdx-layout";
 
-
-
 # Documentation
+
+- [Class: Expression](#class-expression)
+	- [Method: _Expression_`.kind()`](#method-expressionkind)
+- [Class: Integer](#class-integer)
+	- [Function: `int`](#function-int)
+	- [Property: _Integer_`._value`](#property-integer_value)
+- [Class: BigInteger](#class-biginteger)
+
+
 Ora is written in TypeScript and deployed in JavaScript. This page documents Ora's architecture.
 
-## Expressions
+## Class: Expression
 Ora uses objects (class instances) to represent expressions. All these objects inherit from the abstract class `Expression`. As its name suggests, instances of `Expression` represent expressions. Ora natively implements the following expressions:
 
 1. `Integer`
 2. `BigInteger`
-3. `Float`
-4. `BigFloat`
+3. `Real`
+4. `BigReal`
 5. `Fraction`
 6. `BigFraction`
 7. `Complex`
 8. `BigComplex`
-9. `Sym`
+9.  `Sym`
 10. `Constant`
-11. `AlgebraicOp`
-12. `Relation`
-13. `LogicOp`
-14. `SetOp`
+11. `String`
+12. `AlgebraicOp`
+13. `Relation`
+14. `LogicOp`
+15. `SetOp`
 
+### Method: _Expression_`.kind()`
+All instances of `Expression` have a method called `kind`. This method takes no arguments and returns a value of type `EXPR` (implemented as an enum). The returned value corresponds to the `Expression`'s type name. The `kind` method allows us to determine what a given `Expression` is. 
+
+| Call                  | Returns            |
+| --------------------- | ------------------ |
+| _Integer_`.kind()`    | `EXPR.INTEGER`     |
+| _BigInteger_`.kind()` | `EXPR.BIG_INTEGER` |
+| _Real_`.kind()`       | `EXPR.REAL`        |
+| _BigReal_`.kind()`    | `EXPR.BIG_REAL`    |
+| _Fraction_`.kind()`   | `EXPR.FRACTION`    |
+
+## Class: Integer
+The `Integer` class corresponds to the set of integers within JavaScript's safe range for number type data (${[-2^{53} - 1, 2^{53} - 1]}$). Internally, Ora compares values to JavaScript's `Number.MAX_SAFE_INTEGER` to determine whether to cast values to `BigInteger`.
+
+### Function: `int`
+To construct a new `Integer`, use the `int` function:
+
+~~~ts
+const n = int(5); // n is an Integer, of value 5.
+~~~
+
+### Property: _Integer_`._value`
+Given an `Integer` ${x,}$ the expression ${x.\texttt{value}}$ reduces to the value of ${x.}$
+
+__*example*__. 
+~~~ts
+const x = int(1);
+console.log(x._value); // prints 1
+~~~
+
+## Class: BigInteger
+The `BigInteger` class corresponds to the set of integers outside the safe range for number type (${[-2^{53} - 1, 2^{53} - 1]}$).
 
 
 

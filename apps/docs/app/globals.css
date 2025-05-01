@@ -20,6 +20,10 @@ body {
   overflow-x: hidden;
 }
 
+.katex {
+  font-size: 1rem;
+}
+
 * {
   box-sizing: border-box;
   padding: 0;
@@ -40,8 +44,20 @@ h1 {
   text-align: center;
 }
 
+
+
+h2, h3, h4, h5, h6 {
+  margin-top: 2vh;
+}
+
+h1,h2,h3,h4,h5,h6 {
+  font-size: 1.1rem;
+}
+
 h1 {
-  margin: 2vh 0;
+  margin: 1vh 0;
+  margin-bottom: 5vh;
+  font-size: 1.3rem;
 }
 
 main {
@@ -49,7 +65,9 @@ main {
 }
 
 article {
-  padding: 5vw;
+  margin: 2vh 5vw;
+  padding: 5vh 15vw;
+  padding-bottom: 15vw;
 }
 
 p {
