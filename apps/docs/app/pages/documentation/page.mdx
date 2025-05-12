@@ -96,6 +96,18 @@ That is, given two arguments ${a}$ and ${b}$—both of which are either an [`Int
 const r = frac(1,3) // r is the Fraction 1/3.
 ~~~
 
+## ~class~ `BigFraction`
+In most cases, [`Fraction`](#class-fraction) objects in Ora suffice for representing rational numbers. Arbitrary precision rational numbers, however, are best represented by `BigFraction` objects. Like `Fraction`s, `BigFraction`s are numbers of the form ${a/b,}$ except ${a}$ and ${b}$ are either JavaScript `bigint`s or instances of [`BigInteger`](#class-biginteger).    
+
+### ~function~ `bigfrac`
+This is a binary function with the signature:
+
+$$
+	\texttt{bigfrac}(a: \texttt{bigint}, b: \texttt{bigint}) \to \texttt{BigFraction}.
+$$
+
+I.e., given arguments ${a}$ and ${b,}$ both of which are JavaScript `bigint`s, `bigfrac` returns a new [`BigFraction`](#class-bigfraction).
+
 
 export default function MDXPage({ children }) {
 	return <MdxLayout>{children}</MdxLayout>
