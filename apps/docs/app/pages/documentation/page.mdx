@@ -1,25 +1,16 @@
 import MdxLayout from "../../components/mdx-layout";
 
 # Documentation
-
-- [Class: Expression](#class-expression)
-	- [Method: _Expression_`.kind()`](#method-expressionkind)
-- [Class: Integer](#class-integer)
-	- [Function: `int`](#function-int)
-	- [Property: _Integer_`._value`](#property-integer_value)
-- [Class: BigInteger](#class-biginteger)
-
-
 Ora is written in TypeScript and deployed in JavaScript. This page documents Ora's architecture.
 
-## Class: Expression
+## ~class~ Expression
 Ora uses objects (class instances) to represent expressions. All these objects inherit from the abstract class `Expression`. As its name suggests, instances of `Expression` represent expressions. Ora natively implements the following expressions:
 
-1. `Integer`
-2. `BigInteger`
-3. `Real`
-4. `BigReal`
-5. `Fraction`
+1. [`Integer`](#class-integer)
+2. [`BigInteger`](#class-biginteger)
+3. [`Real`](#class-real)
+4. [`BigReal`](#class-bigreal)
+5. [`Fraction`](#class-fraction)
 6. `BigFraction`
 7. `Complex`
 8. `BigComplex`
@@ -31,7 +22,7 @@ Ora uses objects (class instances) to represent expressions. All these objects i
 14. `LogicOp`
 15. `SetOp`
 
-### Method: _Expression_`.kind()`
+### ~method~ _Expression_`.kind()`
 All instances of `Expression` have a method called `kind`. This method takes no arguments and returns a value of type `EXPR` (implemented as an enum). The returned value corresponds to the `Expression`'s type name. The `kind` method allows us to determine what a given `Expression` is. 
 
 | Call                  | Returns            |
@@ -42,29 +33,68 @@ All instances of `Expression` have a method called `kind`. This method takes no 
 | _BigReal_`.kind()`    | `EXPR.BIG_REAL`    |
 | _Fraction_`.kind()`   | `EXPR.FRACTION`    |
 
-## Class: Integer
+## ~class~ Integer
 The `Integer` class corresponds to the set of integers within JavaScript's safe range for number type data (${[-2^{53} - 1, 2^{53} - 1]}$). Internally, Ora compares values to JavaScript's `Number.MAX_SAFE_INTEGER` to determine whether to cast values to `BigInteger`.
 
-### Function: `int`
-To construct a new `Integer`, use the `int` function:
+### ~function~ `int`
+Returns a new `Integer`:
 
 ~~~ts
 const n = int(5); // n is an Integer, of value 5.
 ~~~
 
-### Property: _Integer_`._value`
+### ~property~ _Integer_`._value`
 Given an `Integer` ${x,}$ the expression ${x.\texttt{value}}$ reduces to the value of ${x.}$
 
-__*example*__. 
 ~~~ts
 const x = int(1);
 console.log(x._value); // prints 1
 ~~~
 
-## Class: BigInteger
+## ~class~ `BigInteger`
 The `BigInteger` class corresponds to the set of integers outside the safe range for number type (${[-2^{53} - 1, 2^{53} - 1]}$).
 
+### ~function~ `bigint`
+Returns a new `BigInteger`:
 
+~~~ts
+const b = bigint(5000) // b is a BigInteger, of value 5000.
+~~~
+
+## ~class~ `Real`
+The `Real` class corresponds to floating point numbers. E.g., 3.1, 2.8, 9.99, etc. 
+
+### ~function~ `real`
+Returns a new `Real`.
+
+## ~class~ `BigReal`
+The `BigReal` class corresponds to arbitrary precision floating point numbers. Expressions of type `BigReal` are interpreted as numbers of the form ${m \times 10^n,}$ where ${m}$ is a real number and ${n}$ is an integer.
+
+### ~property~ _BigReal_`._m`
+Given a `BigReal` ${b,}$ the expression ${b.\texttt{\_m}}$ corresponds to the mantissa of ${b}$ (i.e., the ${m}$ in ${b = m \times 10^n}$). For example, if ${b = 1.4592 \times 10^{-15},}$ then ${m = 1.4592.}$ 
+
+
+### ~property~ _BigReal_`._n`
+Given a `BigReal` ${b,}$ the expression ${b.\texttt{\_n}}$ corresponds to the exponent of ${b}$ (i.e., the ${n}$ in ${b = m \times 10^n}$). For example, if ${b = 1.4592 \times 10^{-15},}$ then ${n = -15.}$ 
+
+### ~function~ `bigreal`
+Given a JavaScript number or string ${m}$ and a JavaScript number ${n,}$ returns a new `BigReal` of the form ${m \times 10^n.}$ The argument ${n}$ must be an integer.
+
+## ~class~ `Fraction`
+The `Fraction` class corresponds to rational numbers. That is, numbers of the form ${a/b,}$ where ${a}$ and ${b}$ are integers.
+
+### ~function~ `frac`
+This function has the signature:
+
+$$
+	\texttt{frac}(a: \texttt{Integer | number}, b: \texttt{Integer | number}) \to \texttt{Fraction}
+$$
+
+That is, given two arguments ${a}$ and ${b}$—both of which are either an [`Integer`](#class-integer) or a JavaScript number corresponding to an integer—returns a [`Fraction`](#class-fraction). 
+
+~~~ts
+const r = frac(1,3) // r is the Fraction 1/3.
+~~~
 
 
 export default function MDXPage({ children }) {
