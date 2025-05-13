@@ -1,10 +1,16 @@
+// Utility Functions
+export function isUnsafe(x: unknown): x is undefined | null  {
+  return (x === undefined) || (x === null) 
+}
+
 enum EXPR {
   INTEGER,
   BIG_INTEGER,
-  REAL,
-  BIG_REAL,
+  FLOAT,
+  BIG_FLOAT,
   FRACTION,
   BIG_FRACTION,
+  COMPLEX,
 }
 
 /** An object corresponding to an Expression. */
@@ -30,6 +36,17 @@ export function int(value: number) {
   return new Integer(value);
 }
 
+/**
+ * Returns true, and asserts, only if
+ * the given expression `expr` is
+ * an Integer.
+ */
+export function isInt(expr: Expression): expr is Integer {
+  return (!isUnsafe(expr)) && expr.kind() === EXPR.INTEGER;
+}
+
+
+
 /** An object corresponding to a Big Integer. */
 export class BigInteger extends Expression {
   kind(): EXPR {
@@ -49,9 +66,9 @@ export function bigint(value: bigint) {
 }
 
 /** An object corresponding to a floating point number. */
-export class Real extends Expression {
+export class Float extends Expression {
   kind(): EXPR {
-    return EXPR.REAL;
+    return EXPR.FLOAT;
   }
   /** The value of this real number. */
   _value: number;
@@ -62,14 +79,14 @@ export class Real extends Expression {
 }
 
 /** Returns a new Real. */
-export function real(value: number) {
-  return new Real(value);
+export function float(value: number) {
+  return new Float(value);
 }
 
 /** Returns a new Big Real number. */
-export class BigReal extends Expression {
+export class BigFloat extends Expression {
   kind(): EXPR {
-    return EXPR.BIG_REAL;
+    return EXPR.BIG_FLOAT;
   }
   /** This big real's significand. */
   _m: number | string;
@@ -83,8 +100,8 @@ export class BigReal extends Expression {
 }
 
 /** Returns a new big real number. */
-export function bigreal(m: number | string, n: number = 0) {
-  return new BigReal(m, n);
+export function bigfloat(m: number | string, n: number = 0) {
+  return new BigFloat(m, n);
 }
 
 /** An object corresponding to a Fraction. */
@@ -109,19 +126,15 @@ export function frac(
   denominator: number | Integer
 ) {
   return new Fraction(
-    typeof numerator === "number" 
-			? int(numerator) 
-			: numerator,
-    typeof denominator === "number" 
-			? int(denominator) 
-			: denominator
+    typeof numerator === "number" ? int(numerator) : numerator,
+    typeof denominator === "number" ? int(denominator) : denominator
   );
 }
 
 /**
  * An object corresponding to a fraction. That is,
- * a number of the form `a/b`, where `a` and `b` 
- * are bigints.  
+ * a number of the form `a/b`, where `a` and `b`
+ * are bigints.
  */
 export class BigFraction extends Expression {
   kind(): EXPR {
@@ -129,7 +142,7 @@ export class BigFraction extends Expression {
   }
   _n: bigint;
   _d: bigint;
-  constructor(n: bigint, d:bigint) {
+  constructor(n: bigint, d: bigint) {
     super();
     this._n = n;
     this._d = d;
@@ -137,6 +150,25 @@ export class BigFraction extends Expression {
 }
 
 /** Returns a new BigFraction. */
-export function bigfrac(n: bigint, d:bigint) {
-  return new BigFraction(n,d);
+export function bigfrac(n: bigint, d: bigint) {
+  return new BigFraction(n, d);
+}
+
+type Real = Integer | BigInteger | Float | BigFloat | Fraction | BigFraction;
+
+export class Complex extends Expression {
+  kind(): EXPR {
+    return EXPR.COMPLEX;
+  }
+  _re: Real;
+  _im: Real;
+  constructor(re: Real, im: Real) {
+    super();
+    this._re = re;
+    this._im = im;
+  }
+}
+
+export function complex(re: Real, im: Real) {
+  return new Complex(re, im);
 }

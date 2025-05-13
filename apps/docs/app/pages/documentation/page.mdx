@@ -8,19 +8,18 @@ Ora uses objects (class instances) to represent expressions. All these objects i
 
 1. [`Integer`](#class-integer)
 2. [`BigInteger`](#class-biginteger)
-3. [`Real`](#class-real)
-4. [`BigReal`](#class-bigreal)
+3. [`Float`](#class-float)
+4. [`BigFloat`](#class-bigfloat)
 5. [`Fraction`](#class-fraction)
 6. `BigFraction`
 7. `Complex`
-8. `BigComplex`
-9.  `Sym`
-10. `Constant`
-11. `String`
-12. `AlgebraicOp`
-13. `Relation`
-14. `LogicOp`
-15. `SetOp`
+8.  `Sym`
+9. `Constant`
+10. `String`
+11. `AlgebraicOp`
+12. `Relation`
+13. `LogicOp`
+14. `SetOp`
 
 ### ~method~ _Expression_`.kind()`
 All instances of `Expression` have a method called `kind`. This method takes no arguments and returns a value of type `EXPR` (implemented as an enum). The returned value corresponds to the `Expression`'s type name. The `kind` method allows us to determine what a given `Expression` is. 
@@ -43,6 +42,15 @@ Returns a new `Integer`:
 const n = int(5); // n is an Integer, of value 5.
 ~~~
 
+### ~function~ `isInt`
+This function has the signature:
+
+$$
+	\texttt{isInt}(x: \texttt{Expression}) \to \texttt{boolean}
+$$
+
+More specifically, given an [`Expression`](#class-expression) ${x,}$ returns true if ${x}$ is an [`Integer`](#class-integer), false otherwise. Within TypeScript, this function will assert that ${x}$ is an [`Integer`](#class-integer). 
+
 ### ~property~ _Integer_`._value`
 Given an `Integer` ${x,}$ the expression ${x.\texttt{value}}$ reduces to the value of ${x.}$
 
@@ -61,24 +69,24 @@ Returns a new `BigInteger`:
 const b = bigint(5000) // b is a BigInteger, of value 5000.
 ~~~
 
-## ~class~ `Real`
-The `Real` class corresponds to floating point numbers. E.g., 3.1, 2.8, 9.99, etc. 
+## ~class~ `Float`
+The `Float` class corresponds to floating point numbers. E.g., 3.1, 2.8, 9.99, etc. 
 
-### ~function~ `real`
-Returns a new `Real`.
+### ~function~ `float`
+Returns a new `Float`.
 
-## ~class~ `BigReal`
-The `BigReal` class corresponds to arbitrary precision floating point numbers. Expressions of type `BigReal` are interpreted as numbers of the form ${m \times 10^n,}$ where ${m}$ is a real number and ${n}$ is an integer.
+## ~class~ `BigFloat`
+The `BigFloat` class corresponds to arbitrary precision floating point numbers. Expressions of type `BigFloat` are interpreted as numbers of the form ${m \times 10^n,}$ where ${m}$ is a real number and ${n}$ is an integer.
 
-### ~property~ _BigReal_`._m`
-Given a `BigReal` ${b,}$ the expression ${b.\texttt{\_m}}$ corresponds to the mantissa of ${b}$ (i.e., the ${m}$ in ${b = m \times 10^n}$). For example, if ${b = 1.4592 \times 10^{-15},}$ then ${m = 1.4592.}$ 
+### ~property~ _BigFloat_`._m`
+Given a `BigFloat` ${b,}$ the expression ${b.\texttt{\_m}}$ corresponds to the mantissa of ${b}$ (i.e., the ${m}$ in ${b = m \times 10^n}$). For example, if ${b = 1.4592 \times 10^{-15},}$ then ${m = 1.4592.}$ 
 
 
-### ~property~ _BigReal_`._n`
-Given a `BigReal` ${b,}$ the expression ${b.\texttt{\_n}}$ corresponds to the exponent of ${b}$ (i.e., the ${n}$ in ${b = m \times 10^n}$). For example, if ${b = 1.4592 \times 10^{-15},}$ then ${n = -15.}$ 
+### ~property~ _BigFloat_`._n`
+Given a `BigFloat` ${b,}$ the expression ${b.\texttt{\_n}}$ corresponds to the exponent of ${b}$ (i.e., the ${n}$ in ${b = m \times 10^n}$). For example, if ${b = 1.4592 \times 10^{-15},}$ then ${n = -15.}$ 
 
-### ~function~ `bigreal`
-Given a JavaScript number or string ${m}$ and a JavaScript number ${n,}$ returns a new `BigReal` of the form ${m \times 10^n.}$ The argument ${n}$ must be an integer.
+### ~function~ `bigfloat`
+Given a JavaScript number or string ${m}$ and a JavaScript number ${n,}$ returns a new `BigFloat` of the form ${m \times 10^n.}$ The argument ${n}$ must be an integer.
 
 ## ~class~ `Fraction`
 The `Fraction` class corresponds to rational numbers. That is, numbers of the form ${a/b,}$ where ${a}$ and ${b}$ are integers.
