@@ -1,6 +1,6 @@
 // Utility Functions
-export function isUnsafe(x: unknown): x is undefined | null  {
-  return (x === undefined) || (x === null) 
+export function isUnsafe(x: unknown): x is undefined | null {
+  return x === undefined || x === null;
 }
 
 enum EXPR {
@@ -37,15 +37,13 @@ export function int(value: number) {
 }
 
 /**
- * Returns true, and asserts, only if
+ * Returns true, and type-asserts, only if
  * the given expression `expr` is
  * an Integer.
  */
 export function isInt(expr: Expression): expr is Integer {
-  return (!isUnsafe(expr)) && expr.kind() === EXPR.INTEGER;
+  return !isUnsafe(expr) && expr.kind() === EXPR.INTEGER;
 }
-
-
 
 /** An object corresponding to a Big Integer. */
 export class BigInteger extends Expression {
@@ -63,6 +61,14 @@ export class BigInteger extends Expression {
 /** Returns a new big integer. */
 export function bigint(value: bigint) {
   return new BigInteger(value);
+}
+
+/**
+ * Returns true, and type-asserts, only if the
+ * given Expression `expr` is a BigInteger.
+ */
+export function isBigInt(expr: Expression): expr is BigInteger {
+  return !isUnsafe(expr) && expr.kind() === EXPR.BIG_INTEGER;
 }
 
 /** An object corresponding to a floating point number. */
@@ -132,7 +138,7 @@ export function frac(
 }
 
 /**
- * An object corresponding to a fraction. That is,
+ * Represents a fraction--that is,
  * a number of the form `a/b`, where `a` and `b`
  * are bigints.
  */
@@ -154,8 +160,15 @@ export function bigfrac(n: bigint, d: bigint) {
   return new BigFraction(n, d);
 }
 
+/**
+ * A union of the numeric types Integer, BigInteger, Float,
+ * BigFloat, Fraction, and BigFraction.
+ */
 type Real = Integer | BigInteger | Float | BigFloat | Fraction | BigFraction;
 
+/**
+ * An object corresponding to a Complex number.
+ */
 export class Complex extends Expression {
   kind(): EXPR {
     return EXPR.COMPLEX;
@@ -169,6 +182,80 @@ export class Complex extends Expression {
   }
 }
 
+/**
+ * Returns a new Complex number.
+ */
 export function complex(re: Real, im: Real) {
   return new Complex(re, im);
+}
+
+/**
+ * Represents an error generally.
+ */
+abstract class ERROR extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+/**
+ * Represents a syntax error (an error
+ * that occurs during syntax analysis,
+ * i.e., parsing).
+ */
+export class SYNTAX_ERROR extends ERROR {
+  _line: number;
+  constructor(message: string, line: number) {
+    super(`Syntax error on line ${line}: "${message}"`);
+    this._line = line;
+  }
+}
+
+/**
+ * Represents a lexical error (an error
+ * that occurs during lexical analysis,
+ * i.e., scanning).
+ */
+export class LEXICAL_ERROR extends ERROR {
+  _line: number;
+  constructor(message: string, line: number) {
+    super(`Lexical error on line ${line}: "${message}"`);
+    this._line = line;
+  }
+}
+
+function lexicalAnalyzer(source: string) {
+  /**
+   * A variable corresponding to the current
+   * line the scanner's on.
+   */
+  let _line: number = 1;
+  /**
+   * A pointer to the first character of the lexeme
+   * currently being scanned.
+   */
+  let _start: number = 0;
+  /**
+   * A pointer to the character currently
+   * being scanned.
+   */
+  let _current: number = 0;
+  /**
+   * Error indicator defaulting to null.
+   * If initialized, then the scanning
+   * halts.
+   */
+}
+
+/**
+ * Represents a token.
+ */
+export class Token {
+  _lexeme: string;
+  _line: number;
+  _literal: Expression | null = null;
+  constructor(lexeme: string, line: number) {
+    this._lexeme = lexeme;
+    this._line = line;
+  }
 }

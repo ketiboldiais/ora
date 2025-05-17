@@ -1,9 +1,11 @@
 import MdxLayout from "../../components/mdx-layout";
 
 # Documentation
+
 Ora is written in TypeScript and deployed in JavaScript. This page documents Ora's architecture.
 
 ## ~class~ Expression
+
 Ora uses objects (class instances) to represent expressions. All these objects inherit from the abstract class `Expression`. As its name suggests, instances of `Expression` represent expressions. Ora natively implements the following expressions:
 
 1. [`Integer`](#class-integer)
@@ -11,18 +13,20 @@ Ora uses objects (class instances) to represent expressions. All these objects i
 3. [`Float`](#class-float)
 4. [`BigFloat`](#class-bigfloat)
 5. [`Fraction`](#class-fraction)
-6. `BigFraction`
-7. `Complex`
-8.  `Sym`
-9. `Constant`
-10. `String`
-11. `AlgebraicOp`
-12. `Relation`
-13. `LogicOp`
-14. `SetOp`
+6. [`BigFraction`](#class-bigfraction)
+7. `Real`
+8. `Complex`
+9. `Sym`
+10. `Constant`
+11. `String`
+12. `AlgebraicOp`
+13. `Relation`
+14. `LogicOp`
+15. `SetOp`
 
 ### ~method~ _Expression_`.kind()`
-All instances of `Expression` have a method called `kind`. This method takes no arguments and returns a value of type `EXPR` (implemented as an enum). The returned value corresponds to the `Expression`'s type name. The `kind` method allows us to determine what a given `Expression` is. 
+
+All instances of `Expression` have a method called `kind`. This method takes no arguments and returns a value of type `EXPR` (implemented as an enum). The returned value corresponds to the `Expression`'s type name. The `kind` method allows us to determine what a given `Expression` is.
 
 | Call                  | Returns            |
 | --------------------- | ------------------ |
@@ -33,81 +37,106 @@ All instances of `Expression` have a method called `kind`. This method takes no 
 | _Fraction_`.kind()`   | `EXPR.FRACTION`    |
 
 ## ~class~ Integer
+
 The `Integer` class corresponds to the set of integers within JavaScript's safe range for number type data (${[-2^{53} - 1, 2^{53} - 1]}$). Internally, Ora compares values to JavaScript's `Number.MAX_SAFE_INTEGER` to determine whether to cast values to `BigInteger`.
 
 ### ~function~ `int`
+
 Returns a new `Integer`:
 
-~~~ts
+```ts
 const n = int(5); // n is an Integer, of value 5.
-~~~
+```
 
 ### ~function~ `isInt`
+
 This function has the signature:
 
 $$
 	\texttt{isInt}(x: \texttt{Expression}) \to \texttt{boolean}
 $$
 
-More specifically, given an [`Expression`](#class-expression) ${x,}$ returns true if ${x}$ is an [`Integer`](#class-integer), false otherwise. Within TypeScript, this function will assert that ${x}$ is an [`Integer`](#class-integer). 
+More specifically, given an [`Expression`](#class-expression) ${x,}$ returns true if ${x}$ is an [`Integer`](#class-integer), false otherwise. Within TypeScript, this function will assert that ${x}$ is an [`Integer`](#class-integer). We use this function to explicitly check if a given expression is an `Integer`.
 
 ### ~property~ _Integer_`._value`
+
 Given an `Integer` ${x,}$ the expression ${x.\texttt{value}}$ reduces to the value of ${x.}$
 
-~~~ts
+```ts
 const x = int(1);
 console.log(x._value); // prints 1
-~~~
+```
 
 ## ~class~ `BigInteger`
+
 The `BigInteger` class corresponds to the set of integers outside the safe range for number type (${[-2^{53} - 1, 2^{53} - 1]}$).
 
 ### ~function~ `bigint`
+
 Returns a new `BigInteger`:
 
-~~~ts
-const b = bigint(5000) // b is a BigInteger, of value 5000.
-~~~
+```ts
+const b = bigint(5000); // b is a BigInteger, of value 5000.
+```
+
+### ~function~ `isBigInt`
+
+This function has the signature:
+
+$$
+	\texttt{isBigInt}(x: \texttt{Expression}) \to \texttt{boolean}.
+$$
+
+That is, given an [`Expression`](#class-expression) ${x,}$ the function `isBigInt` returns true, and type-asserts, only if ${x}$ is a [`BigInteger`](#class-biginteger). We use this function to explicitly check whether a given expression is a `BigInteger`.
 
 ## ~class~ `Float`
-The `Float` class corresponds to floating point numbers. E.g., 3.1, 2.8, 9.99, etc. 
+
+The `Float` class corresponds to floating point numbers. E.g., 3.1, 2.8, 9.99, etc.
 
 ### ~function~ `float`
+
 Returns a new `Float`.
 
 ## ~class~ `BigFloat`
+
 The `BigFloat` class corresponds to arbitrary precision floating point numbers. Expressions of type `BigFloat` are interpreted as numbers of the form ${m \times 10^n,}$ where ${m}$ is a real number and ${n}$ is an integer.
 
 ### ~property~ _BigFloat_`._m`
-Given a `BigFloat` ${b,}$ the expression ${b.\texttt{\_m}}$ corresponds to the mantissa of ${b}$ (i.e., the ${m}$ in ${b = m \times 10^n}$). For example, if ${b = 1.4592 \times 10^{-15},}$ then ${m = 1.4592.}$ 
 
+Given a `BigFloat` ${b,}$ the expression ${b.\texttt{\_m}}$ corresponds to the mantissa of ${b}$ (i.e., the ${m}$ in ${b = m \times 10^n}$). For example, if ${b = 1.4592 \times 10^{-15},}$ then ${m = 1.4592.}$
 
 ### ~property~ _BigFloat_`._n`
-Given a `BigFloat` ${b,}$ the expression ${b.\texttt{\_n}}$ corresponds to the exponent of ${b}$ (i.e., the ${n}$ in ${b = m \times 10^n}$). For example, if ${b = 1.4592 \times 10^{-15},}$ then ${n = -15.}$ 
+
+Given a `BigFloat` ${b,}$ the expression ${b.\texttt{\_n}}$ corresponds to the exponent of ${b}$ (i.e., the ${n}$ in ${b = m \times 10^n}$). For example, if ${b = 1.4592 \times 10^{-15},}$ then ${n = -15.}$
 
 ### ~function~ `bigfloat`
+
 Given a JavaScript number or string ${m}$ and a JavaScript number ${n,}$ returns a new `BigFloat` of the form ${m \times 10^n.}$ The argument ${n}$ must be an integer.
 
 ## ~class~ `Fraction`
+
 The `Fraction` class corresponds to rational numbers. That is, numbers of the form ${a/b,}$ where ${a}$ and ${b}$ are integers.
 
 ### ~function~ `frac`
+
 This function has the signature:
 
 $$
 	\texttt{frac}(a: \texttt{Integer | number}, b: \texttt{Integer | number}) \to \texttt{Fraction}
 $$
 
-That is, given two arguments ${a}$ and ${b}$—both of which are either an [`Integer`](#class-integer) or a JavaScript number corresponding to an integer—returns a [`Fraction`](#class-fraction). 
+That is, given two arguments ${a}$ and ${b}$—both of which are either an [`Integer`](#class-integer) or a JavaScript number corresponding to an integer—returns a [`Fraction`](#class-fraction).
 
-~~~ts
-const r = frac(1,3) // r is the Fraction 1/3.
-~~~
+```ts
+const r = frac(1, 3); // r is the Fraction 1/3.
+```
 
 ## ~class~ `BigFraction`
-In most cases, [`Fraction`](#class-fraction) objects in Ora suffice for representing rational numbers. Arbitrary precision rational numbers, however, are best represented by `BigFraction` objects. Like `Fraction`s, `BigFraction`s are numbers of the form ${a/b,}$ except ${a}$ and ${b}$ are either JavaScript `bigint`s or instances of [`BigInteger`](#class-biginteger).    
+
+In most cases, [`Fraction`](#class-fraction) objects in Ora suffice for representing rational numbers. Arbitrary precision rational numbers, however, are best represented by `BigFraction` objects. Like `Fraction`s, `BigFraction`s are numbers of the form ${a/b,}$ except ${a}$ and ${b}$ are either JavaScript `bigint`s or instances of [`BigInteger`](#class-biginteger).
 
 ### ~function~ `bigfrac`
+
 This is a binary function with the signature:
 
 $$
@@ -116,7 +145,99 @@ $$
 
 I.e., given arguments ${a}$ and ${b,}$ both of which are JavaScript `bigint`s, `bigfrac` returns a new [`BigFraction`](#class-bigfraction).
 
+## Casting Rules for Literals
+
+<figure className="table">
+	<table>
+		<thead>
+			<tr>
+				<th></th>
+				<th>`Integer`</th>
+				<th>`BigInteger`</th>
+				<th>`Float`</th>
+				<th>`BigFloat`</th>
+				<th>`Fraction`</th>
+				<th>`BigFraction`</th>
+				<th>`Complex`</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>`Integer`</td>
+				<td>`Integer`</td>
+				<td>`BigInteger`</td>
+				<td>`Float`</td>
+				<td>`BigFloat`</td>
+				<td>`Fraction`</td>
+				<td>`BigFraction`</td>
+				<th>`Complex`</th>
+			</tr>
+			<tr>
+				<td>`BigInteger`</td>
+				<td>`BigInteger`</td>
+				<td>`BigInteger`</td>
+				<td>`BigFloat`</td>
+				<td>`BigFloat`</td>
+				<td>`BigFraction`</td>
+				<td>`BigFraction`</td>
+				<td>`Complex`</td>
+			</tr>
+			<tr>
+				<td>`Float`</td>
+				<td>`Float`</td>
+				<td>`BigFloat`</td>
+				<td>`Float`</td>
+				<td>`BigFloat`</td>
+				<td>`Float`</td>
+				<td>`BigFloat`</td>
+				<td>`Complex`</td>
+			</tr>
+			<tr>
+				<td>`BigFloat`</td>
+				<td>`BigFloat`</td>
+				<td>`BigFloat`</td>
+				<td>`BigFloat`</td>
+				<td>`BigFloat`</td>
+				<td>`BigFloat`</td>
+				<td>`BigFloat`</td>
+				<td>`Complex`</td>
+			</tr>
+			<tr>
+				<td>`Fraction`</td>
+				<td>`Fraction`</td>
+				<td>`BigFraction`</td>
+				<td>`Float`</td>
+				<td>`BigFloat`</td>
+				<td>`Fraction`</td>
+				<td>`BigFraction`</td>
+				<td>`Complex`</td>
+			</tr>
+			<tr>
+				<td>`BigFraction`</td>
+				<td>`BigFraction`</td>
+				<td>`BigFraction`</td>
+				<td>`BigFloat`</td>
+				<td>`BigFloat`</td>
+				<td>`BigFraction`</td>
+				<td>`BigFraction`</td>
+				<td>`Complex`</td>
+			</tr>
+			<tr>
+				<td>`Complex`</td>
+				<td>`Complex`</td>
+				<td>`Complex`</td>
+				<td>`Complex`</td>
+				<td>`Complex`</td>
+				<td>`Complex`</td>
+				<td>`Complex`</td>
+				<td>`Complex`</td>
+			</tr>
+		</tbody>
+	</table>
+</figure>
 
 export default function MDXPage({ children }) {
 	return <MdxLayout>{children}</MdxLayout>
+
+
 }

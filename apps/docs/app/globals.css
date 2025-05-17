@@ -115,11 +115,20 @@ pre {
   font-style: italic;
 }
 
+figure.table {
+  overflow-x: scroll;
+  width: 95%;
+  border: solid thin lightgrey;
+}
+
+th {
+  padding: 0 3px;
+}
+
 table,
 th,
 td {
   margin: auto;
-  width: fit-content;
 }
 
 table {
