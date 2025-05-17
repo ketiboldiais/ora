@@ -1,4 +1,5 @@
 import { Option, option } from "./fp_utils";
+import { TOKEN_TYPE } from "./token_type";
 
 // Utility Functions
 export function isUnsafe(x: unknown): x is undefined | null {
@@ -214,51 +215,21 @@ abstract class ERROR extends Error {
   }
 }
 
-enum TOKEN_TYPE {
-  // Utility tokens
-  /** A token corresponding to end of input. */
-  END,
-  /** A token corresponding to an error. */
-  ERROR,
-  /** A token corresponding to nothingness. */
-  EMPTY,
-
-  // Paired delimiters.
-  /** A token corresponding to `(`. */
-  LEFT_PAREN,
-  /** A token corresponding to `)`. */
-  RIGHT_PAREN,
-  /** A token corresponding to `[` */
-  LEFT_BRACKET,
-  /** A token corresponding to `]` */
-  RIGHT_BRACKET,
-  /** A token corresponding to `{` */
-  LEFT_BRACE,
-  /** A token corresponding to `}` */
-  RIGHT_BRACE,
-
-  // Single-character delimiters
-  /** A token corresponding to `;` */
-  SEMICOLON,
-  /** A token corresponding to `:` */
-  COLON,
-  /** A token corresponding to `.` */
-  DOT,
-  /** A token corresponding to `COMMA` */
-  COMMA,
-  // Oerator 
-}
-
 /**
  * Represents a token.
  */
 export class Token {
   /** This token's lexeme. */
   _lexeme: string;
+
   /** The line where this token was found. */
   _line: number;
+
   /** The literal corresponding to this token's lexeme. */
   _literal: Expression | null = null;
+
+  /** This token's type. */
+  _type: TOKEN_TYPE;
 
   /** Sets this token's lexeme. */
   lexeme(lexeme: string) {
@@ -276,10 +247,27 @@ export class Token {
     this._literal = literal;
     return this;
   }
-  constructor(lexeme: string, line: number) {
+
+  /**
+   * Sets this token's type.
+   */
+  type(type: TOKEN_TYPE) {
+    this._type = type;
+    return this;
+  }
+
+  constructor(type: TOKEN_TYPE, lexeme: string, line: number) {
+    this._type = type;
     this._lexeme = lexeme;
     this._line = line;
   }
+}
+
+/**
+ * Returns a new token.
+ */
+export function token(type: TOKEN_TYPE, lexeme: string, line: number) {
+  return new Token(type, lexeme, line);
 }
 
 /**
@@ -317,6 +305,11 @@ export class LEXICAL_ERROR extends ERROR {
   }
 }
 
+/** Returns a new lexical error. */
+export function lexicalError(message: string, line: number) {
+  return new LEXICAL_ERROR(message, line);
+}
+
 function lexicalAnalyzer(code: string) {
   /**
    * A variable corresponding to the current
@@ -350,12 +343,38 @@ function lexicalAnalyzer(code: string) {
    * Consumes and returns the next character in the
    * source.
    */
-  const tick = (): Option<string> => option(code[_current++]);
+  const tick = (): string => code[_current++] ?? "";
 
   /**
    * Returns the source substring _start to _current.
    */
   const slice = (): string => code.slice(_start, _current);
 
+  /**
+   * Returns a new token.
+   */
+  const tkn = (tokentype: TOKEN_TYPE, lexeme: string = "") =>
+    token(tokentype, lexeme ? lexeme : slice(), _line);
+
+  /**
+   * Returns an error token. If this function is called,
+   * the mutable variable `_error` is set, halting all
+   * scanning.
+   */
+  const errorToken = (message: string) => {
+    _error = lexicalError(message, _line);
+    return tkn(TOKEN_TYPE.ERROR, "").line(_line);
+  };
+
+  /**
+   * Returns the current character being scanned without
+   * moving the scanner forward.
+   */
+  const peek = () => (atEnd() ? "" : (code[_current] ?? ""));
+
+  /**
+   * Returns the character just ahead of the current
+   * character without moving the scanner forward.
+   */
   
 }
