@@ -1,7 +1,7 @@
 export enum TOKEN_TYPE {
   // Utility tokens
   /** A token corresponding to end of input. */
-  END,
+  EOF,
   /** A token corresponding to an error. */
   ERROR,
   /** A token corresponding to nothingness. */
@@ -143,4 +143,9 @@ export enum TOKEN_TYPE {
   REM,
   MOD,
   DIV,
+
+  LIST,
+
+  NUMERIC_CONSTANT,
+  NATIVE_FUNCTION,
 }

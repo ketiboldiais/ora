@@ -1,4 +1,4 @@
-import { Option, option } from "./fp_utils";
+import { isDigit, isValidNameChar } from "./parsing_utils";
 import { TOKEN_TYPE } from "./token_type";
 
 // Utility Functions
@@ -6,7 +6,7 @@ export function isUnsafe(x: unknown): x is undefined | null {
   return x === undefined || x === null;
 }
 
-enum EXPR {
+export enum EXPR {
   INTEGER,
   BIG_INTEGER,
   FLOAT,
@@ -15,6 +15,9 @@ enum EXPR {
   BIG_FRACTION,
   COMPLEX,
   NIL,
+  SYM,
+  BOOL,
+  NUMERIC_CONSTANT,
 }
 
 /** An object corresponding to an Expression. */
@@ -193,6 +196,74 @@ export function complex(re: Real, im: Real) {
   return new Complex(re, im);
 }
 
+/**
+ * An object representing a symbol.
+ */
+export class Sym extends Expression {
+  _sym: string;
+  kind() {
+    return EXPR.SYM;
+  }
+  constructor(sym: string) {
+    super();
+    this._sym = sym;
+  }
+}
+
+/**
+ * Returns a new Sym expression.
+ */
+export function sym(symbol: string) {
+  return new Sym(symbol);
+}
+
+/**
+ * An object representing a numeric constant.
+ */
+export class NumConst extends Expression {
+  _sym: string;
+  _value: number;
+  kind(): EXPR {
+    return EXPR.NUMERIC_CONSTANT;
+  }
+  constructor(sym: string, value: number) {
+    super();
+    this._sym = sym;
+    this._value = value;
+  }
+}
+
+/**
+ * Returns a new numeric constant.
+ */
+export function numConst(symbol: string, value: number) {
+  return new NumConst(symbol, value);
+}
+
+/**
+ * An object representing a Boolean value.
+ */
+export class Bool extends Expression {
+  _value: boolean;
+  kind(): EXPR {
+    return EXPR.BOOL;
+  }
+  constructor(value: boolean) {
+    super();
+    this._value = value;
+  }
+}
+
+/**
+ * Returns a new Bool.
+ */
+export function bool(value: boolean) {
+  return new Bool(value);
+}
+
+/**
+ * An object representing the value nil.
+ */
 export class Nil extends Expression {
   kind(): EXPR {
     return EXPR.NIL;
@@ -202,6 +273,9 @@ export class Nil extends Expression {
   }
 }
 
+/**
+ * Returns a new nil.
+ */
 export function nil() {
   return new Nil();
 }
@@ -310,6 +384,41 @@ export function lexicalError(message: string, line: number) {
   return new LEXICAL_ERROR(message, line);
 }
 
+type NativeUnary =
+  | "ceil"
+  | "floor"
+  | "sin"
+  | "cos"
+  | "cosh"
+  | "tan"
+  | "lg"
+  | "ln"
+  | "log"
+  | "arcsin"
+  | "arccos"
+  | "arcsinh"
+  | "arctan"
+  | "sinh"
+  | "sqrt"
+  | "tanh"
+  | "gcd"
+  | "avg"
+  | "arccosh";
+
+/** A native function that takes more than 1 argument. */
+type NativePolyAry = "max" | "min";
+
+type NativeFn = NativeUnary | NativePolyAry;
+
+type NativeConstants =
+  | "e"
+  | "pi"
+  | "ln2"
+  | "ln10"
+  | "log10e"
+  | "log2e"
+  | "sqrt2";
+
 function lexicalAnalyzer(code: string) {
   /**
    * A variable corresponding to the current
@@ -376,5 +485,179 @@ function lexicalAnalyzer(code: string) {
    * Returns the character just ahead of the current
    * character without moving the scanner forward.
    */
-  
+  const peekNext = (): string => (atEnd() ? "" : (code[_current + 1] ?? ""));
+
+  /**
+   * Returns the character `n` places
+   * ahead of the current character without
+   * moving the scanner forward.
+   */
+  const lookup = (n: number): string =>
+    atEnd() ? "" : (code[_current + n] ?? "");
+
+  /**
+   * If the given expected character `c` matches,
+   * return true and increment the `_current`
+   * variable (the scanner moves forward).
+   * Otherwise, return false without
+   * incrementing (the scanner doesn't move
+   * forward).
+   */
+  const match = (c: string): boolean => {
+    if (atEnd()) return false;
+    if (code[_current] !== c) return false;
+    _current++;
+    return true;
+  };
+
+  /**
+   * Returns true if the current character pointed
+   * at by `_current` matches the provided character c.
+   * False otherwise.
+   */
+  const peekIs = (c: string): boolean => peek() === c;
+
+  /**
+   * Consumes all whitespace while moving
+   * the scanner's `_current` pointer forward.
+   */
+  const skipWhitespace = (): void => {
+    while (!atEnd()) {
+      const char: string = peek();
+      switch (char) {
+        case " ":
+        case "\r":
+        case "\t":
+          tick();
+          break;
+        case "\n":
+          _line++;
+          tick();
+          break;
+        default:
+          return;
+      }
+    }
+  };
+
+  const numConsts: Record<NativeConstants, () => Token> = {
+    e: () => tkn(TOKEN_TYPE.NUMERIC_CONSTANT).literal(numConst("e", Math.E)),
+    pi: () => tkn(TOKEN_TYPE.NUMERIC_CONSTANT).literal(numConst("pi", Math.PI)),
+    ln10: () =>
+      tkn(TOKEN_TYPE.NUMERIC_CONSTANT).literal(numConst("ln10", Math.LN10)),
+    ln2: () =>
+      tkn(TOKEN_TYPE.NUMERIC_CONSTANT).literal(numConst("ln2", Math.LN2)),
+    log10e: () =>
+      tkn(TOKEN_TYPE.NUMERIC_CONSTANT).literal(numConst("log10e", Math.LOG10E)),
+    log2e: () =>
+      tkn(TOKEN_TYPE.NUMERIC_CONSTANT).literal(numConst("log2e", Math.LOG2E)),
+    sqrt2: () =>
+      tkn(TOKEN_TYPE.NUMERIC_CONSTANT).literal(numConst("sqrt2", Math.SQRT2)),
+  };
+
+  /**
+   * Record of native functions. Each key corresponds
+   * to the native function name. The number mapped to
+   * by the key is the function’s arity (the number
+   * of arguments the function takes).
+   */
+  const nativeFunctions: Record<NativeFn, number> = {
+    avg: 1,
+    gcd: 1,
+    sqrt: 1,
+    ceil: 1,
+    tanh: 1,
+    floor: 1,
+    sinh: 1,
+    cosh: 1,
+    sin: 1,
+    cos: 1,
+    tan: 1,
+    lg: 1,
+    ln: 1,
+    log: 1,
+    arctan: 1,
+    arccos: 1,
+    arccosh: 1,
+    arcsin: 1,
+    arcsinh: 1,
+    max: 1,
+    min: 1,
+  };
+
+  /** Dictionary of keywords to tokens. */
+  const dictionary: Record<string, () => Token> = {
+    this: () => tkn(TOKEN_TYPE.THIS),
+    super: () => tkn(TOKEN_TYPE.SUPER),
+    class: () => tkn(TOKEN_TYPE.CLASS),
+    false: () => tkn(TOKEN_TYPE.BOOLEAN).literal(bool(false)),
+    true: () => tkn(TOKEN_TYPE.BOOLEAN).literal(bool(true)),
+    NaN: () => tkn(TOKEN_TYPE.NAN).literal(numConst("NaN", NaN)),
+    Inf: () => tkn(TOKEN_TYPE.INF).literal(numConst("Inf", Infinity)),
+    return: () => tkn(TOKEN_TYPE.RETURN),
+    while: () => tkn(TOKEN_TYPE.WHILE),
+    for: () => tkn(TOKEN_TYPE.FOR),
+    let: () => tkn(TOKEN_TYPE.LET),
+    var: () => tkn(TOKEN_TYPE.VAR),
+    fn: () => tkn(TOKEN_TYPE.FN),
+    if: () => tkn(TOKEN_TYPE.IF),
+    else: () => tkn(TOKEN_TYPE.ELSE),
+    print: () => tkn(TOKEN_TYPE.PRINT),
+    rem: () => tkn(TOKEN_TYPE.REM),
+    mod: () => tkn(TOKEN_TYPE.MOD),
+    div: () => tkn(TOKEN_TYPE.DIV),
+    nil: () => tkn(TOKEN_TYPE.NIL),
+    and: () => tkn(TOKEN_TYPE.AND),
+    or: () => tkn(TOKEN_TYPE.OR),
+    nor: () => tkn(TOKEN_TYPE.NOR),
+    xor: () => tkn(TOKEN_TYPE.XOR),
+    xnor: () => tkn(TOKEN_TYPE.XNOR),
+    not: () => tkn(TOKEN_TYPE.NOT),
+    nand: () => tkn(TOKEN_TYPE.NAND),
+    list: () => tkn(TOKEN_TYPE.LIST),
+  };
+
+  /** Generates a word token. */
+  const wordToken = () => {
+    while ((isValidNameChar(peek()) || isDigit(peek())) && !atEnd()) {
+      tick();
+    }
+    const word = slice();
+    const native = nativeFunctions[word as NativeFn];
+    if (native) {
+      return tkn(TOKEN_TYPE.NATIVE_FUNCTION);
+    } else if (dictionary[word]) {
+      return dictionary[word]();
+    } else if (numConsts[word as NativeConstants]) {
+      return numConsts[word as NativeConstants]();
+    } else {
+      return tkn(TOKEN_TYPE.SYMBOL);
+    }
+  };
+
+  const scan = () => {
+    // We start by skipping whitespace.
+    skipWhitespace();
+
+    // Set the _start and _current pointers to
+    // point at the same character.
+    _start = _current;
+
+    // If we've reached the end of the input source,
+    // immediately return an END token.
+    if (atEnd()) {
+      return tkn(TOKEN_TYPE.EOF, "EOF");
+    }
+
+    // Now we get the current character
+    // and move the scannar forward.
+    const char = tick();
+
+    // If the character is a valid name starter (a Latin
+    // or Greek character, a unicode math symbol,
+    // an underscore, or a `$`), returns a word token.
+    if (isValidNameChar(char)) {
+      return wordToken();
+    }
+  };
 }
