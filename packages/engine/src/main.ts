@@ -404,6 +404,8 @@ export enum TOKEN_TYPE {
    * (a number written in scientific notation).
    */
   BIG_FLOAT,
+  /** A token corresponding to a big fraction. */
+  BIG_FRACTION,
   /** A token corresponding to a symbol. */
   SYMBOL,
   /** A token corresponding to a string. */
@@ -800,18 +802,75 @@ function lexicalAnalyzer(code: string) {
     }
   };
 
+  const decimalToken = (
+    numberString: string,
+    type: NumberTokenType,
+    hasSeparators: boolean
+  ) => {
+    const numstr = hasSeparators
+      ? numberString.replaceAll("_", "")
+      : numberString;
+    switch (type) {
+      // handle integers
+      case TOKEN_TYPE.INTEGER: {
+        const n = Number.parseInt(numstr);
+        if (n > Number.MAX_SAFE_INTEGER) {
+          return tkn(TOKEN_TYPE.BIG_INTEGER).literal(bigint(BigInt(n)));
+        } else {
+          return tkn(TOKEN_TYPE.INTEGER).literal(int(n));
+        }
+      }
+      // handle floats
+      case TOKEN_TYPE.FLOAT: {
+        const n = Number.parseFloat(numstr);
+        // handle very big floats
+        if (n > Number.MAX_VALUE) {
+          const exponential = n.toExponential();
+          const [M, N] = exponential.split("e");
+          const mantissa = Number.parseFloat(M ?? "0");
+          const exponent = Number.parseFloat(N ?? "0");
+          return tkn(TOKEN_TYPE.BIG_FLOAT).literal(
+            bigfloat(mantissa, exponent)
+          );
+        } else {
+          return tkn(TOKEN_TYPE.FLOAT).literal(float(n));
+        }
+      }
+      // handle fractions
+      case TOKEN_TYPE.FRACTION: {
+        const [numerator_as_string, denominator_as_string] = numstr.split("|");
+        const numerator_as_number = Number.parseInt(numerator_as_string ?? "0");
+        const denominator_as_number = Number.parseInt(
+          denominator_as_string ?? "0"
+        );
+        if (
+          numerator_as_number > Number.MAX_SAFE_INTEGER ||
+          denominator_as_number > Number.MAX_SAFE_INTEGER
+        ) {
+          return tkn(TOKEN_TYPE.BIG_FRACTION).literal(
+            bigfrac(BigInt(numerator_as_number), BigInt(denominator_as_number))
+          );
+        } else {
+          return tkn(TOKEN_TYPE.FRACTION).literal(
+            frac(numerator_as_number, denominator_as_number)
+          );
+        }
+      }
+    }
+  };
+
   /**
    * Scans a decimal token.
    */
-  const decimalToken = (initialType: NumberTokenType) => {
+  const scanDecimal = (initialType: NumberTokenType) => {
     let type = initialType;
-    // Flag indicating whether this token has separators. 
+    // Flag indicating whether this token has separators.
     let hasSeparators = false;
     // Keep moving forward as long as we encounter a digit.
     while (isDigit(peek()) && !atEnd()) {
       tick();
     }
-    // We got as many digits as we could get. 
+    // We got as many digits as we could get.
     // Now we check if there's a separator.
     if (peekIs("_") && isDigit(peekNext())) {
       // We have a separator, so set the flag.
@@ -824,8 +883,8 @@ function lexicalAnalyzer(code: string) {
         tick();
         // And as we keep consuming digits, keep the digit count.
         digits++;
-        // Now, if we see a separator ahead AND 
-        // there's a digit following it, we must 
+        // Now, if we see a separator ahead AND
+        // there's a digit following it, we must
         // check if the formatting is correct.
         if (peekIs("_") && isDigit(peekNext())) {
           // We require 3 digits after a separator, always.
@@ -836,8 +895,10 @@ function lexicalAnalyzer(code: string) {
             digits = 0;
           } else {
             // If we don't have 3 digits following the separator,
-            // return an error token. 
-            return errorToken(`Expected 3 ASCII digits after the separator "_".`)
+            // return an error token.
+            return errorToken(
+              `Expected 3 ASCII digits after the separator "_".`
+            );
           }
         }
       }
@@ -847,11 +908,56 @@ function lexicalAnalyzer(code: string) {
       // We require 3 ASCII digits after the "_". So, we
       // make that check here.
       if (digits !== 3) {
-        return errorToken(`Expected 3 ASCII digits after the "_".`)
+        return errorToken(`Expected 3 ASCII digits after the "_".`);
       }
     }
     // Let's handle floating point numbers.
+    // If the next character is a dot followed by,
+    // a digit, then we have a floating point number.
+    if (peekIs(".") && isDigit(peekNext())) {
+      // Consume the "."
+      tick();
+      // Change the current type.
+      type = TOKEN_TYPE.FLOAT;
+      // As long as we keep seeing digits,
+      while (isDigit(peek()) && !atEnd()) {
+        // move forward
+        tick();
+      }
+    }
+    // Now let's handle fractions.
+    if (peekIs("|")) {
+      if (type !== TOKEN_TYPE.INTEGER) {
+        return errorToken(`Expected an integer before "|"`);
+      }
+      type = TOKEN_TYPE.FRACTION;
+      tick();
+      while (isDigit(peek()) && !atEnd()) {
+        tick();
+      }
+      return decimalToken(slice(), type, hasSeparators);
+    }
+    // Handle raw big floats.
+    // These are floating point numbers written in
+    // scientific notation.
+
+    return decimalToken(slice(), type, hasSeparators);
   };
+
+  const stringToken = () => {
+    while (peek() !== `"` && !atEnd()) {
+      if (peek() !== `\n`) {
+        _line++;
+      }
+      tick();
+    }
+    if (atEnd()) {
+      return errorToken(`Unterminated string.`);
+    }
+    tick();
+    const lex = slice().slice(1,-1);
+    return tkn(TOKEN_TYPE.STRING, lex);
+  }
 
   const scan = () => {
     // We start by skipping whitespace.
@@ -931,8 +1037,106 @@ function lexicalAnalyzer(code: string) {
         const integerValue = Number.parseInt(numberString, 16);
         return tkn(TOKEN_TYPE.INTEGER).literal(int(integerValue));
       } else {
-        return decimalToken(TOKEN_TYPE.INTEGER);
+        return scanDecimal(TOKEN_TYPE.INTEGER);
       }
     }
+
+    // Now we handle the individual characters
+    switch (char) {
+      case "@":
+        return tkn(TOKEN_TYPE.AT);
+      case ":":
+        return tkn(TOKEN_TYPE.COLON);
+      case "&":
+        return tkn(TOKEN_TYPE.AMPERSAND);
+      case "~":
+        return tkn(TOKEN_TYPE.TILDE);
+      case "|":
+        return tkn(TOKEN_TYPE.VBAR);
+      case "(":
+        return tkn(TOKEN_TYPE.LEFT_PAREN);
+      case ")":
+        return tkn(TOKEN_TYPE.RIGHT_PAREN);
+      case "[":
+        return tkn(TOKEN_TYPE.LEFT_BRACKET);
+      case "]":
+        return tkn(TOKEN_TYPE.RIGHT_BRACKET);
+      case "{":
+        return tkn(TOKEN_TYPE.LEFT_BRACE);
+      case "}":
+        return tkn(TOKEN_TYPE.RIGHT_BRACE);
+      case ",":
+        return tkn(TOKEN_TYPE.COMMA);
+      case "*":
+        return tkn(match("*") ? TOKEN_TYPE.STAR_STAR : TOKEN_TYPE.STAR);
+      case ";":
+        return tkn(TOKEN_TYPE.SEMICOLON);
+      case "%":
+        return tkn(TOKEN_TYPE.PERCENT);
+      case "/":
+        return tkn(TOKEN_TYPE.SLASH);
+      case "^":
+        return tkn(TOKEN_TYPE.CARET);
+      case "!":
+        return tkn(match("=") ? TOKEN_TYPE.BANG_EQUAL : TOKEN_TYPE.BANG);
+      case "<":
+        return tkn(match("=") ? TOKEN_TYPE.LESS_EQUAL : TOKEN_TYPE.LESS);
+      case ">":
+        return tkn(match("=") ? TOKEN_TYPE.GREATER_EQUAL : TOKEN_TYPE.GREATER);
+      case "+":
+        return tkn(match("+") ? TOKEN_TYPE.PLUS_PLUS : TOKEN_TYPE.PLUS);
+      case ".": {
+        if (match("+")) {
+          return tkn(TOKEN_TYPE.DOT_ADD);
+        } else if (match("-")) {
+          return tkn(TOKEN_TYPE.DOT_MINUS);
+        } else if (match("*")) {
+          return tkn(TOKEN_TYPE.DOT_STAR);
+        } else if (match("^")) {
+          return tkn(TOKEN_TYPE.DOT_CARET);
+        } else {
+          return tkn(TOKEN_TYPE.DOT);
+        }
+      }
+      // special handling of "-" for inline comments
+      case "-": {
+        if (peek() === "-" && peekNext() === "-") {
+          while (peek() !== "\n" && !atEnd()) {
+            tick();
+          }
+          return tkn(TOKEN_TYPE.EMPTY);
+        } else {
+          return tkn(match("-") ? TOKEN_TYPE.MINUS_MINUS : TOKEN_TYPE.MINUS);
+        }
+      }
+      // special handling of "=" for block comments
+      case "=": {
+        if (peek() === "=" && peekNext() === "=") {
+          while (peek() === "=") {
+            tick();
+          }
+          while (!atEnd()) {
+            tick();
+            if (peek() === "=" && peekNext() === "=" && lookup(2) === "=") {
+              break;
+            }
+          }
+          if (atEnd()) {
+            return errorToken(`Unterminated block comment.`);
+          }
+          while (peek() === "=") {
+            tick();
+          }
+          return tkn(TOKEN_TYPE.EMPTY);
+        } else {
+          return tkn(match("=") ? TOKEN_TYPE.EQUAL_EQUAL : TOKEN_TYPE.EQUAL);
+        }
+      }
+      case '"':
+        return stringToken();
+      case `'`:
+        return algebraString();
+    }
+    return errorToken(`Unrecognized token: ${char}`);
   };
 }
