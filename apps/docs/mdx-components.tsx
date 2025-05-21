@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
+    a: (props) => <Link href={props.href} target="rel">{props.children}</Link>,
     TOC: (props) => {
       <div>
         <Link href="/">Home</Link>

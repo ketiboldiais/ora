@@ -1,5 +1,9 @@
-import { isDigit, isValidNameChar } from "./parsing_utils";
-import { TOKEN_TYPE } from "./token_type";
+import {
+  isDigit,
+  isHexDigit,
+  isOctalDigit,
+  isValidNameChar,
+} from "./utils_parsing";
 
 // Utility Functions
 export function isUnsafe(x: unknown): x is undefined | null {
@@ -288,6 +292,167 @@ abstract class ERROR extends Error {
     super(message);
   }
 }
+
+export enum TOKEN_TYPE {
+  // Utility tokens
+  /** A token corresponding to end of input. */
+  EOF,
+  /** A token corresponding to an error. */
+  ERROR,
+  /** A token corresponding to nothingness. */
+  EMPTY,
+
+  // Paired delimiters.
+  /** A token corresponding to `(`. */
+  LEFT_PAREN,
+  /** A token corresponding to `)`. */
+  RIGHT_PAREN,
+  /** A token corresponding to `[` */
+  LEFT_BRACKET,
+  /** A token corresponding to `]` */
+  RIGHT_BRACKET,
+  /** A token corresponding to `{` */
+  LEFT_BRACE,
+  /** A token corresponding to `}` */
+  RIGHT_BRACE,
+
+  // Single-character delimiters
+  /** A token corresponding to `;` */
+  SEMICOLON,
+  /** A token corresponding to `:` */
+  COLON,
+  /** A token corresponding to `.` */
+  DOT,
+  /** A token corresponding to `COMMA` */
+  COMMA,
+
+  // Operator delimiters
+  /** A token corresponding to `+` */
+  PLUS,
+  /** A token corresponding to `-` */
+  MINUS,
+  /** A token corresponding to `*` */
+  STAR,
+  /** A token corresponding to `/` */
+  SLASH,
+  /** A token corresponding to `^` */
+  CARET,
+  /** A token corresponding to `%` */
+  PERCENT,
+  /** A token corresponding to `!` */
+  BANG,
+  /** A token corresponding to `&` */
+  AMPERSAND,
+  /** A token corresponding to `~` */
+  TILDE,
+  /** A token corresponding to `|` */
+  VBAR,
+  /** A token corresponding to `=` */
+  EQUAL,
+  /** A token corresponding to `<` */
+  LESS,
+  /** A token corresponding to `>` */
+  GREATER,
+  /** A token corresponding to `<=` */
+  LESS_EQUAL,
+  /** A token corresponding to `>=` */
+  GREATER_EQUAL,
+  /** A token corresponding to `!=` */
+  BANG_EQUAL,
+  /** A token corresponding to `==` */
+  EQUAL_EQUAL,
+  /** A token corresponding to `++` */
+  PLUS_PLUS,
+  /** A token corresponding to `--` */
+  MINUS_MINUS,
+  /** A token corresponding to `**` */
+  STAR_STAR,
+
+  // Vector Operators
+  /** A token corresponding to `.+` */
+  DOT_ADD,
+  /** A token corresponding to `.*` */
+  DOT_STAR,
+  /** A token corresponding to `.-` */
+  DOT_MINUS,
+  /** A token corresponding to `.^` */
+  DOT_CARET,
+  /** A token corresponding to `@` */
+  AT,
+  /** A token corresponding to `#` */
+  POUND,
+
+  // Matrix Operators
+  /** A token corresponding to `#+` */
+  POUND_PLUS,
+  /** A token corresponding to `#-` */
+  POUND_MINUS,
+  /** A token corresponding to `#*` */
+  POUND_STAR,
+
+  // Literals
+  /** A token corresponding to an integer */
+  INTEGER,
+  /** A token corresponding to a big integer */
+  BIG_INTEGER,
+  /** A token corresponding to an floating point number. */
+  FLOAT,
+  /** A token corresponding to a fraction. */
+  FRACTION,
+  /**
+   * A token corresponding to a big floating point number
+   * (a number written in scientific notation).
+   */
+  BIG_FLOAT,
+  /** A token corresponding to a symbol. */
+  SYMBOL,
+  /** A token corresponding to a string. */
+  STRING,
+  /** A token corresponding to a Boolean literal. */
+  BOOLEAN,
+  /** A token corresponding to NaN (Not a Number) */
+  NAN,
+  /** A token corresponding to Inf (Infinity). */
+  INF,
+  /** A token corresponding to nil. */
+  NIL,
+
+  // Keyword Tokens
+  AND,
+  OR,
+  NOT,
+  NAND,
+  XOR,
+  XNOR,
+  NOR,
+  IF,
+  ELSE,
+  FN,
+  LET,
+  VAR,
+  RETURN,
+  WHILE,
+  FOR,
+  CLASS,
+  PRINT,
+  SUPER,
+  THIS,
+  REM,
+  MOD,
+  DIV,
+
+  LIST,
+
+  NUMERIC_CONSTANT,
+  NATIVE_FUNCTION,
+}
+
+type NumberTokenType =
+  | TOKEN_TYPE.INTEGER
+  | TOKEN_TYPE.BIG_INTEGER
+  | TOKEN_TYPE.FLOAT
+  | TOKEN_TYPE.FRACTION
+  | TOKEN_TYPE.BIG_FLOAT;
 
 /**
  * Represents a token.
@@ -635,6 +800,59 @@ function lexicalAnalyzer(code: string) {
     }
   };
 
+  /**
+   * Scans a decimal token.
+   */
+  const decimalToken = (initialType: NumberTokenType) => {
+    let type = initialType;
+    // Flag indicating whether this token has separators. 
+    let hasSeparators = false;
+    // Keep moving forward as long as we encounter a digit.
+    while (isDigit(peek()) && !atEnd()) {
+      tick();
+    }
+    // We got as many digits as we could get. 
+    // Now we check if there's a separator.
+    if (peekIs("_") && isDigit(peekNext())) {
+      // We have a separator, so set the flag.
+      hasSeparators = true;
+      tick(); // Consume the separator "_"
+      // Counter for how many digits follow the separator.
+      let digits = 0;
+      // As long as we encounter digits, keep moving forward.
+      while (isDigit(peek()) && !atEnd()) {
+        tick();
+        // And as we keep consuming digits, keep the digit count.
+        digits++;
+        // Now, if we see a separator ahead AND 
+        // there's a digit following it, we must 
+        // check if the formatting is correct.
+        if (peekIs("_") && isDigit(peekNext())) {
+          // We require 3 digits after a separator, always.
+          if (digits === 3) {
+            // If we have 3 digits, move forward.
+            tick();
+            // Reset the digit counter.
+            digits = 0;
+          } else {
+            // If we don't have 3 digits following the separator,
+            // return an error token. 
+            return errorToken(`Expected 3 ASCII digits after the separator "_".`)
+          }
+        }
+      }
+      // It could be the case that we never entered
+      // the while-loop from earlier. I.e., we never
+      // saw digits after the separator. That's a problem.
+      // We require 3 ASCII digits after the "_". So, we
+      // make that check here.
+      if (digits !== 3) {
+        return errorToken(`Expected 3 ASCII digits after the "_".`)
+      }
+    }
+    // Let's handle floating point numbers.
+  };
+
   const scan = () => {
     // We start by skipping whitespace.
     skipWhitespace();
@@ -658,6 +876,63 @@ function lexicalAnalyzer(code: string) {
     // an underscore, or a `$`), returns a word token.
     if (isValidNameChar(char)) {
       return wordToken();
+    }
+
+    // If the character is `#` then we might
+    // have a matrix operator.
+    if (char === "#") {
+      if (match("+")) {
+        return tkn(TOKEN_TYPE.POUND_PLUS);
+      } else if (match("-")) {
+        return tkn(TOKEN_TYPE.POUND_MINUS);
+      } else if (match("*")) {
+        return tkn(TOKEN_TYPE.POUND_STAR);
+      } else {
+        return tkn(TOKEN_TYPE.POUND);
+      }
+    }
+
+    // If the character is a digit,
+    // then we have a number token.
+    if (isDigit(char)) {
+      // Scan binary number
+      if (char === "0" && match("b")) {
+        if (!(peekIs("0") || peekIs("1"))) {
+          return errorToken(`Expected binary digits after "0b"`);
+        }
+        while ((peekIs("0") || peekIs("1")) && !atEnd()) {
+          tick();
+        }
+        const numberString = slice().replace("0b", "0");
+        const integerValue = Number.parseInt(numberString, 2);
+        return tkn(TOKEN_TYPE.INTEGER).literal(int(integerValue));
+      }
+      // Scan octadecimal number token
+      else if (char === "0" && match("o")) {
+        if (isOctalDigit(peek())) {
+          return errorToken(`Expected octal digits after "0o"`);
+        }
+        while (isOctalDigit(peek()) && !atEnd()) {
+          tick();
+        }
+        const numberString = slice().replace("0o", "");
+        const integerValue = Number.parseInt(numberString, 0);
+        return tkn(TOKEN_TYPE.INTEGER).literal(int(integerValue));
+      }
+      // Scan hexadecimal number
+      else if (char === "0" && match("x")) {
+        if (!isHexDigit(peek())) {
+          return errorToken(`Expected hexadecimals after "0x"`);
+        }
+        while (isHexDigit(peek()) && !atEnd()) {
+          tick();
+        }
+        const numberString = slice().replace("0x", "");
+        const integerValue = Number.parseInt(numberString, 16);
+        return tkn(TOKEN_TYPE.INTEGER).literal(int(integerValue));
+      } else {
+        return decimalToken(TOKEN_TYPE.INTEGER);
+      }
     }
   };
 }

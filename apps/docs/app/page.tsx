@@ -1,5 +1,5 @@
 import styles from "./page.module.css";
-import { links } from "./links";
+import { links, blogs } from "./links";
 import Link from "next/link";
 // import {int} from "@ora/engine/main";
 
@@ -15,9 +15,17 @@ export default function Home() {
         <ol>
           {links.map((link) => (
             <li key={link.url}>
-              <Link href={"pages/"+link.url}>{link.title}</Link>
+              <Link href={"pages/" + link.url}>{link.title}</Link>
             </li>
           ))}
+          <li>Blog</li>
+          <ul>
+            {blogs.map((blog) => (
+              <li key={blog.url}>
+                <Link href={"blog/" + blog.url}>{blog.title}</Link>
+              </li>
+            ))}
+          </ul>
         </ol>
       </main>
     </div>

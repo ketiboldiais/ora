@@ -1,0 +1,11 @@
+import MdxLayout from "../../components/mdx-layout";
+
+# Tokenization
+Expressions are passed to Ora's functions as strings. Expressions in Ora, however, are represented with objects and manipulated as objects. So how do we go from simple JavaScript strings to Ora's object representations? We do so with parsing, and the first step to parsing is tokenization.
+
+
+
+
+export default function MDXPage({ children }) {
+	return <MdxLayout>{children}</MdxLayout>
+}
