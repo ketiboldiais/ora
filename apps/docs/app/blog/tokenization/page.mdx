@@ -1,9 +1,300 @@
 import MdxLayout from "../../components/mdx-layout";
+import {TOKENS1} from "../../components/Diagrams";
 
 # Tokenization
-Expressions are passed to Ora's functions as strings. Expressions in Ora, however, are represented with objects and manipulated as objects. So how do we go from simple JavaScript strings to Ora's object representations? We do so with parsing, and the first step to parsing is tokenization.
+Consider the string below:
+
+~~~ts
+"(3 + 8) * 2"
+~~~
+
+Suppose we want to reduce this expression. I.e., actually perform  the operations to arrive at ${22.}$ How do we get Ora to simplify this expression?    
+
+The first step is __lexical analysis__ — the process of scanning and validating lexemes and generating tokens. We take the given string and scan each character, one by one, until we get a __lexeme__ — a sequence of characters that matches a predefined pattern. Once we have a lexeme, we can associate that lexeme with a __token__, a set of character sequences that have an associated semantic. For example, all of these are recognized lexemes in Ora:
+
+$$
+	\left\{
+		\begin{matrix}
+			1 & 3 & 52 \\
+			85 & 33 & 21 \\
+			771 & 0 & 9815
+		\end{matrix}
+	\right\}.
+$$
+
+Each of them are `INTEGER` tokens. Think of scanning as the process of finding these lexemes, and tokenization as the process of generating their respective tokens. The tokens we get out of this whole process are then fed to the __parser__ for __syntax analysis__.
+
+For our example string from earlier, Ora generates the following tokens: 
+
+<TOKENS1/>
+
+The rest of this article explores Ora's approach to generating these tokens.  
+
+## Tokens as Objects
+Internally, Ora tokens are represented with objects. These objects are instances of the `TokenObj` class. This class has the following properties:
+
+| Property | Description |
+| -------- | ----------- |
+| `_lexeme` | A `string`, corresponding to the token's lexeme. |
+| `_line` | A `number`, corresponding to the line the scanner encountered this token in. | 
+| `_literal` | An `Expression`. Some tokens can be readily mapped to a particular literal (e.g., we don't have to wait for the parser to know that ${1.87}$ is, syntactically, a `Float`, or that `true` is a `Bool`). |
+| `_token` | A `TOKEN`, corresponding to the `TokenObj`'s underlying token. |
+
+Token objects also have the following methods:
+
+| Method | Description |
+| ------ | ----------- |
+| `lexeme: string -> this` | Given a string ${s,}$ sets the `TokenObj`'s `_lexeme` to ${s}$ and returns _this_. | 
+| `line: number -> this` | Given a number ${n,}$ sets the `TokenObj`'s `_line` property to ${n}$ and returns _this_. | 
+| `literal: Expression -> this` | Given a literal ${\ell,}$ sets the `TokenObj`'s `_literal` property to ${n}$ and returns _this_. | 
+| `token: TOKEN -> this` | Given a token ${t,}$ sets the `TokenObj`'s `_token` property to ${t}$ and returns _this_. |
+
+## The `TOKEN` Enum
+In Ora, we associate lexemes with particular tokens. It's easiest to think of a single token as _one of_ an enumerated type, so we use TypeScript's enum construct to represent all the possible tokens.      
+
+<details>
+<summary>~source code~: `enum TOKEN`</summary>
+
+~~~ts
+enum TOKEN {
+  // Utility tokens
+  /** A token corresponding to end of input. */
+  EOF,
+  /** A token corresponding to an error. */
+  ERROR,
+  /** A token corresponding to nothingness. */
+  EMPTY,
+
+  // Paired delimiters.
+  // These are delimiters that, when encountered,
+  // we can expect to see another, related lexeme.
+
+  /** A token corresponding to `(`. */
+  LEFT_PAREN,
+  /** A token corresponding to `)`. */
+  RIGHT_PAREN,
+  /** A token corresponding to `[` */
+  LEFT_BRACKET,
+  /** A token corresponding to `]` */
+  RIGHT_BRACKET,
+  /** A token corresponding to `{` */
+  LEFT_BRACE,
+  /** A token corresponding to `}` */
+  RIGHT_BRACE,
+
+  // Single-character delimiters.
+  // These are delimiters that can stand
+  // on their own.
+
+  /** A token corresponding to `;` */
+  SEMICOLON,
+  /** A token corresponding to `:` */
+  COLON,
+  /** A token corresponding to `.` */
+  DOT,
+  /** A token corresponding to `COMMA` */
+  COMMA,
+
+  // Operator delimiters.
+  // These are a subset of the single-character
+  // delimiters. They are associated with certain
+  // operations.
+
+  /** A token corresponding to `+` */
+  PLUS,
+  /** A token corresponding to `-` */
+  MINUS,
+  /** A token corresponding to `*` */
+  STAR,
+  /** A token corresponding to `/` */
+  SLASH,
+  /** A token corresponding to `^` */
+  CARET,
+  /** A token corresponding to `%` */
+  PERCENT,
+  /** A token corresponding to `!` */
+  BANG,
+  /** A token corresponding to `&` */
+  AMPERSAND,
+  /** A token corresponding to `~` */
+  TILDE,
+  /** A token corresponding to `|` */
+  VBAR,
+  /** A token corresponding to `=` */
+  EQUAL,
+  /** A token corresponding to `<` */
+  LESS,
+  /** A token corresponding to `>` */
+  GREATER,
+  /** A token corresponding to `<=` */
+  LESS_EQUAL,
+  /** A token corresponding to `>=` */
+  GREATER_EQUAL,
+  /** A token corresponding to `!=` */
+  BANG_EQUAL,
+  /** A token corresponding to `==` */
+  EQUAL_EQUAL,
+  /** A token corresponding to `++` */
+  PLUS_PLUS,
+  /** A token corresponding to `--` */
+  MINUS_MINUS,
+  /** A token corresponding to `**` */
+  STAR_STAR,
+
+  // Vector Operators.
+  // These are operators associated with
+  // vectors.
+
+  /** A token corresponding to `.+` */
+  DOT_ADD,
+  /** A token corresponding to `.*` */
+  DOT_STAR,
+  /** A token corresponding to `.-` */
+  DOT_MINUS,
+  /** A token corresponding to `.^` */
+  DOT_CARET,
+  /** A token corresponding to `@` */
+  AT,
+  /** A token corresponding to `#` */
+  POUND,
+
+  // Matrix Operators
+  // These are operators associated with
+  // matrices.
+
+  /** A token corresponding to `#+` */
+  POUND_PLUS,
+  /** A token corresponding to `#-` */
+  POUND_MINUS,
+  /** A token corresponding to `#*` */
+  POUND_STAR,
+
+  // Literals
+  /** A token corresponding to an integer */
+  INTEGER,
+  /** A token corresponding to a big integer */
+  BIG_INTEGER,
+  /** A token corresponding to an floating point number. */
+  FLOAT,
+  /** A token corresponding to a fraction. */
+  FRACTION,
+  /**
+   * A token corresponding to a big floating point number
+   * (a number written in scientific notation).
+   */
+  BIG_FLOAT,
+  /** A token corresponding to a big fraction. */
+  BIG_FRACTION,
+  /** A token corresponding to a symbol. */
+  SYMBOL,
+  /** A token corresponding to a string. */
+  STRING,
+  /** A token corresponding to a symbolic string. */
+  SYM_STRING,
+  /** A token corresponding to a Boolean literal. */
+  BOOLEAN,
+  /** A token corresponding to the literal "NaN" (Not a Number) */
+  NAN,
+  /** A token corresponding to the literal "Inf" (Infinity). */
+  INF,
+  /** A token corresponding to the literal "nil". */
+  NIL,
+
+  // Keyword Tokens
+  /** A token corresponding to the keyword "and". */
+  AND,
+  /** A token corresponding to the keyword "or". */
+  OR,
+  /** A token corresponding to the keyword "not". */
+  NOT,
+  /** A token corresponding to the keyword "nand". */
+  NAND,
+  /** A token corresponding to the keyword "xor". */
+  XOR,
+  /** A token corresponding to the keyword "xnor". */
+  XNOR,
+  /** A token corresponding to the keyword "nor". */
+  NOR,
+  /** A token corresponding to the keyword "if". */
+  IF,
+  /** A token corresponding to the keyword "else". */
+  ELSE,
+  /** A token corresponding to the keyword "fn". */
+  FN,
+  /** A token corresponding to the keyword "let". */
+  LET,
+  /** A token corresponding to the keyword "var". */
+  VAR,
+  /** A token corresponding to the keyword "return". */
+  RETURN,
+  /** A token corresponding to the keyword "while". */
+  WHILE,
+  /** A token corresponding to the keyword "for". */
+  FOR,
+  /** A token corresponding to the keyword "class". */
+  CLASS,
+  /** A token corresponding to the keyword "print". */
+  PRINT,
+  /** A token corresponding to the keyword "super". */
+  SUPER,
+  /** A token corresponding to the keyword "this". */
+  THIS,
+  /** A token corresponding to the keyword "rem". */
+  REM,
+  /** A token corresponding to the keyword "mod". */
+  MOD,
+  /** A token corresponding to the keyword "div". */
+  DIV,
+  /** A token corresponding to some numeric constant. */
+  NUMERIC_CONSTANT,
+  /** A token corresponding to some native function name. */
+  NATIVE_FUNCTION,
+}
+~~~
+
+</details>
 
 
+## Scanning
+In programming language design, the most common ways to conduct lexical analysis are (1) __separate pass scanning__ and (2) __scanning on demand__.
+
+With _separate pass scanning_, we scan through the entire source code to generate an array of tokens. This whole array is then fed to the parser for syntactic analysis, token by token. Under this approach, scanning is an entirely separate process that must be done on its own (hence the "separate pass" part).    
+
+On the other hand, the _scanning on demand_ approach only scans a token when the parser asks for it. Here, we don't have an entirely separate operation of scanning. We only scan when we need to. 
+
+There are costs and benefits to both approaches. For _separate pass scanning_, the largest cost is memory. The more code we have, the larger the array of tokens we'll have to generate. There's also the cost of performing unnecessary work. We generate all those tokens—using up potentially a lot of memory—only to be hit with a syntactic error. 
+
+That said, _separate pass scanning_ has its benefits. For starters, it makes it easier to think about the entire process from source code to execution, since scanning is entirely decoupled. This leads to easier testing and debugging upfront.
+
+With _scanning on demand_, we mitigate the costs of memory. We don't need to generate a whole array of tokens. We only scan when the parser needs another token. Instead of feeding the parser a potentially massive array, we only feed it one token at a time.
+
+The cost to _scanning on demand_: It can be a little tricky to debug issues, since an error can trace all the way back to some scanning function. This cost, however, isn't all that terrible. If we have the scanning functions return lexical errors up front, and ensure the parser stays on the lookout for these errors before any parsing operation, then tracing becomes much easier. 
+
+Weighing these costs and benefits, Ora uses a _scanning on demand_ approach.
+
+## Writing the Lexical Analyzer
+Ora's scanner lies in the `lexicalAnalyzer` function. This function takes a string ${s}$ (corresponding to the source code) and returns an object with two functions:
+
+1. `scan` — This function takes no arguments and runs a single scan, returning a `TokenObj`. 
+2. `stream` — This function runs a scan through the entirety of ${s,}$ returning an array of `TokenObj`s. We use `stream` primarily for testing and debugging.
+
+### Tracking State
+The `lexicalAnalyzer` maintains a few stateful variables to keep track of where it's at in the scanning process.
+
+~~~ts
+let _line: number = 1;
+let _start: number = 0;
+let _current: number = 0;
+let _error: ERROR | null = null;
+~~~
+
+We use the `_line` variable to keep track of which line the scanner's currently on. Each time the source code starts on a new line, we increment this counter. This variable's value is assigned to each `TokenObj` we generate (the `TokenObj`'s `_line` property). By keeping track of which line we're on, we can provide helpful error reports to users (e.g., "A syntax error occurred on line 7," "I don't recognize that character on line 175," etc.) 
+
+The `_start` and `_current` variables allow us to keep track of where we started and where we're currently at. We need these two variables to extract lexemes from the source code. The two variables are used by the following function within `lexicalAnalyzer`:
+
+~~~ts
+const slice = (): string => code.slice(_start, _current);
+~~~
 
 
 export default function MDXPage({ children }) {
