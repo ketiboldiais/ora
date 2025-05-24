@@ -1,7 +1,111 @@
 import MdxLayout from "../../components/mdx-layout";
 
 # Documentation
+
+<TOC>
+
+- [Reserved Words](#reserved-words)
+- [~class~ Expression](#class-expression)
+	- [~method~ _Expression_`.kind()`](#method-expressionkind)
+- [~class~ Integer](#class-integer)
+	- [~function~ `int`](#function-int)
+	- [~function~ `isInt`](#function-isint)
+	- [~property~ _Integer_`._value`](#property-integer_value)
+- [~class~ `BigInteger`](#class-biginteger)
+	- [~function~ `bigint`](#function-bigint)
+	- [~function~ `isBigInt`](#function-isbigint)
+- [~class~ `Float`](#class-float)
+	- [~function~ `float`](#function-float)
+- [~class~ `BigFloat`](#class-bigfloat)
+	- [~property~ _BigFloat_`._m`](#property-bigfloat_m)
+	- [~property~ _BigFloat_`._n`](#property-bigfloat_n)
+	- [~function~ `bigfloat`](#function-bigfloat)
+- [~class~ `Fraction`](#class-fraction)
+	- [~function~ `frac`](#function-frac)
+- [~class~ `BigFraction`](#class-bigfraction)
+	- [~function~ `bigfrac`](#function-bigfrac)
+- [Casting Rules for Literals](#casting-rules-for-literals)
+
+</TOC>
+
 Ora is written in TypeScript and deployed in JavaScript. This page documents Ora's architecture.
+
+## Reserved Words
+The following words cannot be used as variable or function names.
+
+<Cols of={4}>
+<div>
+
+- `nan`
+- `inf`
+- `and`
+- `or`
+- `not`
+- `nand`
+- `xor`
+- `xnor`
+- `nor`
+- `if`
+- `else`
+- `fn`
+
+</div>
+<div>
+
+- `let`
+- `var`
+- `return`
+- `while`
+- `for`
+- `class`
+- `print`
+- `super`
+- `this`
+- `rem`
+- `mod`
+- `div`
+- `false`
+- `true`
+
+</div>
+
+<div>
+
+- `ceil`
+- `floor`
+- `sin`
+- `cos`
+- `cosh`
+- `tan`
+- `lg`
+- `ln`
+- `log`
+- `arcsin`
+- `arccos`
+- `arcsinh`
+- `arctan`
+- `sinh`
+- `sqrt`
+- `tanh`
+- `gcd`
+- `avg`
+- `arccosh`
+
+</div>
+
+<div>
+
+- `e`
+- `pi`
+- `ln2`
+- `ln10`
+- `log10e`
+- `log2e`
+- `sqrt2`
+
+</div>
+
+</Cols>
 
 ## ~class~ Expression
 

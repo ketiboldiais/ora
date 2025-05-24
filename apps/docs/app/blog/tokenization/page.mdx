@@ -2,6 +2,20 @@ import MdxLayout from "../../components/mdx-layout";
 import {TOKENS1} from "../../components/Diagrams";
 
 # Tokenization
+
+<TOC>
+
+- [Tokens as Objects](#tokens-as-objects)
+- [The `TOKEN` Enum](#the-token-enum)
+- [Scanning](#scanning)
+- [Writing the Lexical Analyzer](#writing-the-lexical-analyzer)
+	- [Tracking State](#tracking-state)
+		- [Tracking Line Numbers](#tracking-line-numbers)
+		- [Lexemes: Source Code Slices](#lexemes-source-code-slices)
+		- [Lexical Errors](#lexical-errors)
+
+</TOC>
+
 Consider the string below:
 
 ~~~ts
@@ -287,14 +301,22 @@ let _start: number = 0;
 let _current: number = 0;
 let _error: ERROR | null = null;
 ~~~
+These variables are described in the following sections.  
 
+#### Tracking Line Numbers
 We use the `_line` variable to keep track of which line the scanner's currently on. Each time the source code starts on a new line, we increment this counter. This variable's value is assigned to each `TokenObj` we generate (the `TokenObj`'s `_line` property). By keeping track of which line we're on, we can provide helpful error reports to users (e.g., "A syntax error occurred on line 7," "I don't recognize that character on line 175," etc.) 
 
+#### Lexemes: Source Code Slices
 The `_start` and `_current` variables allow us to keep track of where we started and where we're currently at. We need these two variables to extract lexemes from the source code. The two variables are used by the following function within `lexicalAnalyzer`:
 
 ~~~ts
 const slice = (): string => code.slice(_start, _current);
 ~~~
+
+This function, as its name suggests, takes a slice of the source code. That slice is a lexeme, as determined by the `_start` and `_current` counters.
+
+#### Lexical Errors 
+
 
 
 export default function MDXPage({ children }) {

@@ -4,7 +4,7 @@ import Link from "next/link";
 // import {lexicalAnalyzer} from "@ora/engine/main";
 
 export default function Home() {
-  // const r = lexicalAnalyzer('1_000').stream();
+  // const r = lexicalAnalyzer('1_000 + 12 + x').stream().map(l => l.map(t => t.toString()));
   // console.log(r);
   return (
     <div className={styles.page}>

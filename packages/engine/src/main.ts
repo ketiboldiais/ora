@@ -24,6 +24,9 @@ export enum EXPR {
   BOOL,
   NUMERIC_CONSTANT,
   STRING,
+  INF,
+  NAN,
+  UNDEFINED,
 }
 
 /** An object corresponding to an Expression. */
@@ -179,6 +182,8 @@ export function bigfrac(n: bigint, d: bigint) {
  */
 type Real = Integer | BigInteger | Float | BigFloat | Fraction | BigFraction;
 
+type Numeric = Real | NAN | Inf;
+
 /**
  * An object corresponding to a Complex number.
  */
@@ -247,6 +252,55 @@ export function numConst(symbol: string, value: number) {
 }
 
 /**
+ * An object representing Infinity.
+ */
+export class Inf extends Expression {
+  kind(): EXPR {
+    return EXPR.INF;
+  }
+  _sign: "+" | "-";
+  constructor(sign: "+" | "-") {
+    super();
+    this._sign = sign;
+  }
+}
+
+/** Returns a new Inf (Infinity) object. */
+export function inf(sign: "+" | "-") {
+  return new Inf(sign);
+}
+
+/** An object corresponding to nan (not a number). */
+export class NAN extends Expression {
+  kind(): EXPR {
+    return EXPR.NAN;
+  }
+  _value: number = NaN;
+  constructor() {
+    super();
+  }
+}
+
+export function nan() {
+  return new NAN();
+}
+
+/** An object representing the global symbol "undefined". */
+export class Undefined extends Expression {
+  kind(): EXPR {
+    return EXPR.UNDEFINED;
+  }
+  _value = "undefined" as const;
+  constructor() {
+    super();
+  }
+}
+
+export const UNDEFINED = () => (
+  new Undefined()
+)
+
+/*
  * An object representing a Boolean value.
  */
 export class Bool extends Expression {
@@ -459,8 +513,10 @@ export enum TOKEN {
   NAN,
   /** A token corresponding to the literal "Inf" (Infinity). */
   INF,
-  /** A token corresponding to the literal "nil". */
+  /** A token corresponding to the literal "Nil". */
   NIL,
+  /** A token corresponding to the literal "Undefined". */
+  UNDEFINED,
 
   // Keyword Tokens
   /** A token corresponding to the keyword "and". */
@@ -513,6 +569,36 @@ export enum TOKEN {
   NATIVE_FUNCTION,
 }
 
+type Keyword =
+  | "nan"
+  | "inf"
+  | "nil"
+  | 'undefined'
+  | "and"
+  | "or"
+  | "not"
+  | "nand"
+  | "xor"
+  | "xnor"
+  | "nor"
+  | "if"
+  | "else"
+  | "fn"
+  | "let"
+  | "var"
+  | "return"
+  | "while"
+  | "for"
+  | "class"
+  | "print"
+  | "super"
+  | "this"
+  | "rem"
+  | "mod"
+  | "div"
+  | "false"
+  | "true";
+
 type NumberTokenType =
   | TOKEN.INTEGER
   | TOKEN.BIG_INTEGER
@@ -559,6 +645,10 @@ export class TokenObj {
   token(token: TOKEN) {
     this._token = token;
     return this;
+  }
+
+  toString() {
+    return `{_token: ${TOKEN[this._token]}, _lexeme: ${this._lexeme}, _line: ${this._line}}`;
   }
 
   constructor(type: TOKEN, lexeme: string, line: number) {
@@ -776,8 +866,7 @@ export function lexicalAnalyzer(code: string) {
     pi: () => tkn(TOKEN.NUMERIC_CONSTANT).literal(numConst("pi", Math.PI)),
     ln10: () =>
       tkn(TOKEN.NUMERIC_CONSTANT).literal(numConst("ln10", Math.LN10)),
-    ln2: () =>
-      tkn(TOKEN.NUMERIC_CONSTANT).literal(numConst("ln2", Math.LN2)),
+    ln2: () => tkn(TOKEN.NUMERIC_CONSTANT).literal(numConst("ln2", Math.LN2)),
     log10e: () =>
       tkn(TOKEN.NUMERIC_CONSTANT).literal(numConst("log10e", Math.LOG10E)),
     log2e: () =>
@@ -817,14 +906,15 @@ export function lexicalAnalyzer(code: string) {
   };
 
   /** Dictionary of keywords to tokens. */
-  const dictionary: Record<string, () => TokenObj> = {
+  const dictionary: Record<Keyword, () => TokenObj> = {
     this: () => tkn(TOKEN.THIS),
     super: () => tkn(TOKEN.SUPER),
     class: () => tkn(TOKEN.CLASS),
     false: () => tkn(TOKEN.BOOLEAN).literal(bool(false)),
     true: () => tkn(TOKEN.BOOLEAN).literal(bool(true)),
-    NaN: () => tkn(TOKEN.NAN).literal(numConst("NaN", NaN)),
-    Inf: () => tkn(TOKEN.INF).literal(numConst("Inf", Infinity)),
+    nan: () => tkn(TOKEN.NAN).literal(nan()),
+    inf: () => tkn(TOKEN.INF).literal(inf("+")),
+    undefined: () => tkn(TOKEN.UNDEFINED).literal(UNDEFINED()),
     return: () => tkn(TOKEN.RETURN),
     while: () => tkn(TOKEN.WHILE),
     for: () => tkn(TOKEN.FOR),
@@ -856,8 +946,8 @@ export function lexicalAnalyzer(code: string) {
     const native = nativeFunctions[word as NativeFn];
     if (native) {
       return tkn(TOKEN.NATIVE_FUNCTION);
-    } else if (dictionary[word]) {
-      return dictionary[word]();
+    } else if (dictionary[word as Keyword]) {
+      return dictionary[word as Keyword]();
     } else if (numConsts[word as NativeConstants]) {
       return numConsts[word as NativeConstants]();
     } else {
@@ -892,9 +982,7 @@ export function lexicalAnalyzer(code: string) {
           const [M, N] = exponential.split("e");
           const mantissa = Number.parseFloat(M ?? "0");
           const exponent = Number.parseFloat(N ?? "0");
-          return tkn(TOKEN.BIG_FLOAT).literal(
-            bigfloat(mantissa, exponent)
-          );
+          return tkn(TOKEN.BIG_FLOAT).literal(bigfloat(mantissa, exponent));
         } else {
           return tkn(TOKEN.FLOAT).literal(float(n));
         }
@@ -920,7 +1008,7 @@ export function lexicalAnalyzer(code: string) {
         }
       }
     }
-    return errorToken('Unrecognized decimal');
+    return errorToken("Unrecognized decimal");
   };
 
   /**
@@ -1244,18 +1332,13 @@ export function lexicalAnalyzer(code: string) {
         peek = k;
       }
       if (
-        (
-          (prev._token === TOKEN.RIGHT_PAREN) ||
-          (prev._token === TOKEN.RIGHT_BRACE) ||
-          (prev._token === TOKEN.RIGHT_BRACKET)
-        ) &&
-        (now._token === TOKEN.COMMA) 
-        &&
-        (
-          (peek._token === TOKEN.RIGHT_PAREN) ||
-          (peek._token === TOKEN.RIGHT_BRACE) ||
-          (peek._token === TOKEN.RIGHT_BRACKET)
-        )
+        (prev._token === TOKEN.RIGHT_PAREN ||
+          prev._token === TOKEN.RIGHT_BRACE ||
+          prev._token === TOKEN.RIGHT_BRACKET) &&
+        now._token === TOKEN.COMMA &&
+        (peek._token === TOKEN.RIGHT_PAREN ||
+          peek._token === TOKEN.RIGHT_BRACE ||
+          peek._token === TOKEN.RIGHT_BRACKET)
       ) {
         continue;
       }
@@ -1263,9 +1346,43 @@ export function lexicalAnalyzer(code: string) {
     }
     out.push(peek);
     return right(out);
-  }
+  };
   return {
     scan,
     stream,
-  }
+  };
 }
+
+/**
+ * The binding power of a given operator.
+ * Values of type `bp` are used the parsers
+ * to determinate operator precedence.
+ */
+enum BP {
+  NIL,
+  LOWEST,
+  STRINGOP,
+  ASSIGN,
+  ATOM,
+  OR,
+  NOR,
+  AND,
+  NAND,
+  XOR,
+  XNOR,
+  NOT,
+  EQ,
+  REL,
+  SUM,
+  DIFFERENCE,
+  PRODUCT,
+  QUOTIENT,
+  IMUL,
+  POWER,
+  DOT_PRODUCT,
+  POSTFIX,
+  CALL,
+}
+
+export function syntaxAnalysis() {}
+

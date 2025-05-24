@@ -115,6 +115,10 @@ html {
   margin: 0.8em 0;
 }
 
+ol, ul {
+  padding: 0;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
@@ -417,6 +421,18 @@ li p {
   margin: 0;
 }
 
+.toc {
+  border-top: solid thin var(--pencil);
+  border-bottom: solid thin var(--pencil);
+  padding-top: 5px;
+  padding-bottom: 10px;
+}
+
+.toc ul {
+  margin: 0;
+  padding: 0;
+}
+
 .toc li {
   margin: 0;
 }
@@ -523,6 +539,8 @@ a:hover {
     height: 97vh;
     padding: 1vh 0.5vw;
     width: 22vw;
+    border-top: none;
+    border-bottom: none;
   }
   .toc > ul {
     border-top: thin solid var(--blockquote-bg);
