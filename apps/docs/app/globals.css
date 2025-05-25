@@ -403,16 +403,16 @@ aside {
 }
 
 
-.article-main li {counter-increment: part;        counter-reset: subpart;}
-.article-main li li {counter-increment: subpart;     counter-reset: chapter;}
-.article-main li li li {counter-increment: chapter;     counter-reset: module;}
-.article-main li li li li {counter-increment: module;      counter-reset: submodule;}
-.article-main li li li li li {counter-increment: submodule;   counter-reset: submodule;}
-.article-main li::before { content: counter(part) "\00a0" "\00a0"; }
-.article-main li li::before { content: counter(part) "." counter(subpart) "\00a0" "\00a0"; }
-.article-main li li li::before { content: counter(part) "." counter(subpart) "." counter(chapter) "\00a0" "\00a0"; }
-.article-main li li li li::before { content: counter(part) "." counter(subpart) "." counter(chapter) "." counter(module) "\00a0" "\00a0"; }
-.article-main li li li li li::before { content: counter(part) "." counter(subpart) "." counter(chapter) "." counter(module) "." counter(submodule) "\00a0" "\00a0"; }
+.article-main .main-toc li {counter-increment: part;        counter-reset: subpart;}
+.article-main .main-toc li li {counter-increment: subpart;     counter-reset: chapter;}
+.article-main .main-toc li li li {counter-increment: chapter;     counter-reset: module;}
+.article-main .main-toc li li li li {counter-increment: module;      counter-reset: submodule;}
+.article-main .main-toc li li li li li {counter-increment: submodule;   counter-reset: submodule;}
+.article-main .main-toc li::before { content: counter(part) "\00a0" "\00a0"; }
+.article-main .main-toc li li::before { content: counter(part) "." counter(subpart) "\00a0" "\00a0"; }
+.article-main .main-toc li li li::before { content: counter(part) "." counter(subpart) "." counter(chapter) "\00a0" "\00a0"; }
+.article-main .main-toc li li li li::before { content: counter(part) "." counter(subpart) "." counter(chapter) "." counter(module) "\00a0" "\00a0"; }
+.article-main .main-toc li li li li li::before { content: counter(part) "." counter(subpart) "." counter(chapter) "." counter(module) "." counter(submodule) "\00a0" "\00a0"; }
 
 aside p {
   margin: 1vh 0;
@@ -737,4 +737,9 @@ details {
   /* padding: 0px 8px; */
   padding-left: 8px;
   /* background-color: rgb(228, 228, 228); */
+}
+
+.ident {
+  margin-left: 20px;
+  margin-right: 20px;
 }

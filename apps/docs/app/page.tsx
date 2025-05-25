@@ -1,6 +1,7 @@
 import styles from "./page.module.css";
 import { links, blogs } from "./links";
 import Link from "next/link";
+import { Tex } from "./components/Tex";
 // import {lexicalAnalyzer} from "@ora/engine/main";
 
 export default function Home() {
@@ -12,10 +13,55 @@ export default function Home() {
         <h1>Ora</h1>
         <article className="article-main">
           <p>
-            This is the documentation site for Ora, a Computer Algebra System
-            built with TypeScript.
+            This is the documentation site for Ora, a CAS built with TypeScript.
           </p>
-          <ol>
+          <p>
+            <b>What&apos;s a CAS?</b> A CAS (Computer Algebra System) is a
+            computer program that performs symbolic mathematical operations.
+            These are operations like:
+          </p>
+          <div className={"ident"}>
+            <p>
+              Solve for <Tex content="x" />:{" "}
+              <Tex content="7x^2 - 5x + 6 = 117." />
+            </p>
+            <p>
+              Simplify: <Tex content="\dfrac{3x + x + 1}{xy}." />
+            </p>
+            <p>
+              Differentiate:{" "}
+              <Tex content="f(x) = \dfrac{\sqrt{2x^2 - \ln x}}{5x}." />
+            </p>
+          </div>
+          <p>
+            If you&apos;ve ever had to take a college math class, you&apos;ve
+            probably encountered a few of them: <i>Mathematica</i>, <i>SymPy</i>
+            , <i>SageMath</i>, etc.
+          </p>
+          <p>
+            <b>Why build one?</b> This project started off as a small graphics
+            library to help publish my notes from undergrad and law school
+            online. That library grew bigger and messy as my courses &mdash; and
+            their accompanying notes &mdash; grew more complicated. Ora&apos;s
+            my attempt at cleaning it up into a single package.
+          </p>
+          <p>
+            I also love math, and developing this library&apos;s a great learning experience. Without question, developing a CAS is <i>hard</i>, and it&apos;s arguably a fool&apos;s errand. You run into efficiency issues, you must constantly consider
+            trade-offs between extensability and performance, and you&apos;re
+            forced to do research about a lot of different areas of mathematics. But, that difficulty is what makes working on this project enjoyable. 
+          </p>
+          <p>
+            <b>What&apos;s with the name? Ora?</b> Latin. As a noun, it means
+            &ldquo;shore&rdquo; or &ldquo;coast.&rdquo; Developing Ora feels
+            like standing on the edge of computational capability (e.g., per{" "}
+            <i>Hilbert&apos;s Tenth Problem</i>, there&apos;s no general
+            algorithm for determining whether any Diophantine equation has a
+            solution). As a verb, it means to &ldquo;pray&rdquo; or
+            &ldquo;plead&rdquo; &mdash; I run a lot of tests with this library,
+            and the most common phrase I hear myself saying is &ldquo;Please
+            work.&rdquo;
+          </p>
+          <ol className="main-toc">
             {links.map((link) => (
               <li key={link.url}>
                 <Link href={"pages/" + link.url}>{link.title}</Link>

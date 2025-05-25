@@ -27,6 +27,10 @@ export enum EXPR {
   INF,
   NAN,
   UNDEFINED,
+  RELATION,
+  EQUATION,
+  SUM,
+  DIFFERENCE,
 }
 
 /** An object corresponding to an Expression. */
@@ -362,6 +366,98 @@ export class Nil extends Expression {
 export function nil() {
   return new Nil();
 }
+
+/**
+ * The operators recognized as relation operators
+ * in symbolic strings. Note that the `=` sign in
+ * a symbolic string is seen as a relation operator
+ * rather than assignment, since assignment is handled
+ * by the Praxis interpreter.
+ */
+type RelationOperator = "=" | "<" | ">" | "<=" | ">=" | "!=";
+
+/** An object representing a relation. */
+export class Relation extends Expression {
+  kind(): EXPR {
+    return EXPR.RELATION;
+  }
+  _op: RelationOperator;
+  _args: Expression[];
+  constructor(op: RelationOperator, args: Expression[]) {
+    super();
+    this._op = op;
+    this._args = args;
+  }
+}
+
+/** Returns a new Relation expression. */
+export function relate(op: RelationOperator, args: Expression[]) {
+  return new Relation(op, args)
+}
+
+/**
+ * An object representing an equation.
+ */
+export class Equation extends Expression {
+  kind(): EXPR {
+    return EXPR.EQUATION;
+  }
+  _args: [Expression, Expression];
+  constructor(left: Expression, right: Expression) {
+    super();
+    this._args = [left, right];
+  }
+}
+
+/**
+ * Returns a new Equation object.
+ */
+export function equate(left: Expression, right: Expression) {
+  return new Equation(left, right);
+}
+
+/**
+ * An object representing a sum.
+ */
+export class Sum extends Expression {
+  kind(): EXPR {
+    return EXPR.SUM;
+  }
+  _args: Expression[];
+  constructor(args: Expression[]) {
+    super();
+    this._args = args;
+  }
+}
+
+/**
+ * Returns a new Sum expression.
+ */
+export function sum(...args: Expression[]) {
+  return new Sum(args);
+}
+
+/**
+ * An object representing a difference.
+ */
+export class Difference extends Expression {
+  kind(): EXPR {
+    return EXPR.DIFFERENCE;
+  }
+  _args: EXPR[];
+  constructor(args: EXPR[]) {
+    super();
+    this._args = args;
+  }
+}
+
+/**
+ * Returns a new Difference expression.
+ */
+export function diff(...args: EXPR[]) {
+  return new Difference(args);
+}
+
 
 /**
  * Represents an error generally.
