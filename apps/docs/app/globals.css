@@ -232,7 +232,7 @@ h1 em, h2 em, h3 em, h4 em, h5 em, h6 em {
 } 
 
 th {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 table,
@@ -610,11 +610,11 @@ div.procedure {
   counter-reset: lineNumber -1;
   border-top: solid thin lightgray;
   border-bottom: solid thin lightgray;
-  padding: 1em 0 1em 0;
+  padding: 0 0 0 0;
   margin: 1em 1.5em;
-  /* font-size: 0.9em; */
   overflow-y: scroll;
 }
+
 div.procedure blockquote {
   margin: 0;
   padding: 0;
@@ -697,7 +697,8 @@ div.procedure ol li li li li li li::before {
   right: 6.1rem;
 }
 div.procedure > ol {
-  margin-top: 6px;
+  margin-top: 4px;
+  margin-bottom: 4px;
   /* margin-left: 1em; */
 }
 div.procedure ul {
@@ -742,4 +743,61 @@ details {
 .ident {
   margin-left: 20px;
   margin-right: 20px;
+}
+
+.header {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: bold;
+  margin-top: 12px;
+  margin-bottom: -10px;
+  font-family: "ftb";
+}
+
+#operator_table td {
+  width: fit-content;
+}
+
+#operator_table td:nth-child(1) {
+  text-align: center;
+  font-family: monospace;
+}
+#operator_table td:nth-child(1) code {
+  font-family: monospace;
+}
+#operator_table pre {
+  margin: 0;
+  padding: 0px;
+  background-color: var(--background);
+  overflow-x: scroll;
+  max-width: 50%;
+}
+
+div.example {
+  display: grid;
+  grid-template-columns: 1fr 9fr;
+  gap: 10px;
+  margin: 10px 0;
+  /* background-color: rgb(224, 224, 224);
+  padding: 2px 10px;
+  padding-bottom: 5px;
+  border-radius: 5px;
+  margin-left: 10px;
+  margin-right: 10px; */
+}
+
+div.example-title {
+  font-variant: small-caps;
+  font-weight: bold;
+  /* border: solid thin lightgrey; */
+  font-size: 1rem;
+}
+
+div.example-body {
+  padding: 1px 5px;
+  border-left: solid 3px var(--lightgrey);
+}
+
+div.example p:first-child {
+  margin: 0;
 }

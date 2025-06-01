@@ -1,4 +1,4 @@
-import { left, right } from "./utils_fp";
+import { Either, left, right } from "./utils_fp";
 import {
   isDigit,
   isHexDigit,
@@ -24,6 +24,7 @@ export enum EXPR {
   BOOL,
   NUMERIC_CONSTANT,
   STRING,
+  SYMSTRING,
   INF,
   NAN,
   UNDEFINED,
@@ -31,20 +32,42 @@ export enum EXPR {
   EQUATION,
   SUM,
   DIFFERENCE,
+  PRODUCT,
+  QUOTIENT,
+  POWER,
+  FUNC,
 }
 
 /** An object corresponding to an Expression. */
 abstract class Expression {
   abstract kind(): EXPR;
+  abstract toString(): string;
+}
+
+abstract class Atomic extends Expression {}
+abstract class Compound extends Expression {}
+
+abstract class Numeric extends Atomic {}
+
+abstract class Real extends Numeric {
+  abstract sign(): -1 | 0 | 1;
 }
 
 /** An object corresponding to an Integer. */
-class Integer extends Expression {
+class Integer extends Real {
+  /** The value of this integer. */
+  _value: number;
+  sign(): -1 | 0 | 1 {
+    return this._value < 0 ? -1 : this._value > 0 ? 1 : 0;
+  }
   kind(): EXPR {
     return EXPR.INTEGER;
   }
-  /** The value of this integer. */
-  _value: number;
+
+  toString(): string {
+    return `${this._value}`;
+  }
+
   constructor(value: number) {
     super();
     this._value = Math.floor(value);
@@ -66,9 +89,15 @@ export function isInt(expr: Expression): expr is Integer {
 }
 
 /** An object corresponding to a Big Integer. */
-export class BigInteger extends Expression {
+export class BigInteger extends Real {
   kind(): EXPR {
     return EXPR.BIG_INTEGER;
+  }
+  sign(): -1 | 0 | 1 {
+    return this._value < 0 ? -1 : this._value > 0 ? 1 : 0;
+  }
+  toString(): string {
+    return `${this._value}`;
   }
   /** The value of this big integer. */
   _value: bigint;
@@ -92,9 +121,15 @@ export function isBigInt(expr: Expression): expr is BigInteger {
 }
 
 /** An object corresponding to a floating point number. */
-export class Float extends Expression {
+export class Float extends Real {
   kind(): EXPR {
     return EXPR.FLOAT;
+  }
+  sign(): -1 | 0 | 1 {
+    return this._value < 0 ? -1 : this._value > 0 ? 1 : 0;
+  }
+  toString(): string {
+    return `${this._value}`;
   }
   /** The value of this real number. */
   _value: number;
@@ -104,21 +139,33 @@ export class Float extends Expression {
   }
 }
 
-/** Returns a new Real. */
+/** Returns a new float. */
 export function float(value: number) {
   return new Float(value);
 }
 
+export function isFloat(x: Expression): x is Float {
+  return !isUnsafe(x) && x.kind() === EXPR.FLOAT;
+}
+
 /** Returns a new Big Real number. */
-export class BigFloat extends Expression {
+export class BigFloat extends Real {
   kind(): EXPR {
     return EXPR.BIG_FLOAT;
   }
+  sign(): -1 | 0 | 1 {
+    return this._m < 0 ? -1 : this._m > 0 ? 1 : 0;
+  }
+  toString(): string {
+    const m = `${this._m}`;
+    const n = `${this._n}`;
+    return `${m}E${this._n < 0 ? "-" : "+"}${n}`;
+  }
   /** This big real's significand. */
-  _m: number | string;
+  _m: number;
   /** This big real's exponent. This must be an integer. */
   _n: number = 0;
-  constructor(m: number | string, n: number) {
+  constructor(m: number, n: number) {
     super();
     this._m = m;
     this._n = Math.floor(n);
@@ -126,14 +173,27 @@ export class BigFloat extends Expression {
 }
 
 /** Returns a new big real number. */
-export function bigfloat(m: number | string, n: number = 0) {
+export function bigfloat(m: number, n: number = 0) {
   return new BigFloat(m, n);
 }
 
+export function isBigFloat(x: Expression): x is BigFloat {
+  return !isUnsafe(x) && x.kind() === EXPR.BIG_FLOAT;
+}
+
 /** An object corresponding to a Fraction. */
-export class Fraction extends Expression {
+export class Fraction extends Real {
   kind(): EXPR {
     return EXPR.FRACTION;
+  }
+  sign(): -1 | 0 | 1 {
+    return this._value < 0 ? -1 : this._value > 0 ? 1 : 0;
+  }
+  toString(): string {
+    return `${this._n.toString()}|${this._d.toString()}`;
+  }
+  get _value() {
+    return this._n._value / this._d._value;
   }
   /** This fraction's numerator. */
   _n: Integer;
@@ -157,14 +217,27 @@ export function frac(
   );
 }
 
+export function isFrac(x: Expression): x is Fraction {
+  return !isUnsafe(x) && x.kind() === EXPR.FRACTION;
+}
+
 /**
  * Represents a fraction--that is,
  * a number of the form `a/b`, where `a` and `b`
  * are bigints.
  */
-export class BigFraction extends Expression {
+export class BigFraction extends Real {
   kind(): EXPR {
     return EXPR.BIG_FRACTION;
+  }
+  sign(): -1 | 0 | 1 {
+    return this._value < 0 ? -1 : this._value > 0 ? 1 : 0;
+  }
+  toString(): string {
+    return `${this._n}|${this._d}`;
+  }
+  get _value() {
+    return this._n / this._d;
   }
   _n: bigint;
   _d: bigint;
@@ -180,20 +253,19 @@ export function bigfrac(n: bigint, d: bigint) {
   return new BigFraction(n, d);
 }
 
-/**
- * A union of the numeric types Integer, BigInteger, Float,
- * BigFloat, Fraction, and BigFraction.
- */
-type Real = Integer | BigInteger | Float | BigFloat | Fraction | BigFraction;
-
-type Numeric = Real | NAN | Inf;
+export function isBigFrac(x: Expression): x is BigFraction {
+  return !isUnsafe(x) && x.kind() === EXPR.BIG_FRACTION;
+}
 
 /**
  * An object corresponding to a Complex number.
  */
-export class Complex extends Expression {
+export class Complex extends Numeric {
   kind(): EXPR {
     return EXPR.COMPLEX;
+  }
+  toString(): string {
+    return `${this._re} ${this._im.sign() < 0 ? "-" : "+"} ${this._im}i`;
   }
   _re: Real;
   _im: Real;
@@ -214,10 +286,13 @@ export function complex(re: Real, im: Real) {
 /**
  * An object representing a symbol.
  */
-export class Sym extends Expression {
+export class Sym extends Atomic {
   _sym: string;
   kind() {
     return EXPR.SYM;
+  }
+  toString(): string {
+    return this._sym;
   }
   constructor(sym: string) {
     super();
@@ -235,11 +310,14 @@ export function sym(symbol: string) {
 /**
  * An object representing a numeric constant.
  */
-export class NumConst extends Expression {
+export class NumConst extends Atomic {
   _sym: string;
   _value: number;
   kind(): EXPR {
     return EXPR.NUMERIC_CONSTANT;
+  }
+  toString(): string {
+    return this._sym;
   }
   constructor(sym: string, value: number) {
     super();
@@ -258,11 +336,14 @@ export function numConst(symbol: string, value: number) {
 /**
  * An object representing Infinity.
  */
-export class Inf extends Expression {
+export class Inf extends Atomic {
   kind(): EXPR {
     return EXPR.INF;
   }
   _sign: "+" | "-";
+  toString(): string {
+    return this._sign + "inf";
+  }
   constructor(sign: "+" | "-") {
     super();
     this._sign = sign;
@@ -275,9 +356,12 @@ export function inf(sign: "+" | "-") {
 }
 
 /** An object corresponding to nan (not a number). */
-export class NAN extends Expression {
+export class NAN extends Atomic {
   kind(): EXPR {
     return EXPR.NAN;
+  }
+  toString(): string {
+    return "nan";
   }
   _value: number = NaN;
   constructor() {
@@ -290,9 +374,12 @@ export function nan() {
 }
 
 /** An object representing the global symbol "undefined". */
-export class Undefined extends Expression {
+export class Undefined extends Atomic {
   kind(): EXPR {
     return EXPR.UNDEFINED;
+  }
+  toString(): string {
+    return this._value;
   }
   _value = "undefined" as const;
   constructor() {
@@ -300,17 +387,18 @@ export class Undefined extends Expression {
   }
 }
 
-export const UNDEFINED = () => (
-  new Undefined()
-)
+export const UNDEFINED = () => new Undefined();
 
 /*
  * An object representing a Boolean value.
  */
-export class Bool extends Expression {
+export class Bool extends Atomic {
   _value: boolean;
   kind(): EXPR {
     return EXPR.BOOL;
+  }
+  toString(): string {
+    return `${this._value}`;
   }
   constructor(value: boolean) {
     super();
@@ -328,19 +416,17 @@ export function bool(value: boolean) {
 /**
  * An object representing a string.
  */
-export class Str extends Expression {
+export class Str extends Atomic {
   kind(): EXPR {
     return EXPR.STRING;
   }
+  toString(): string {
+    return this._string;
+  }
   _string: string;
-  _algebraic: boolean = false;
   constructor(str: string) {
     super();
     this._string = str;
-  }
-  algebraic(value: boolean = true) {
-    this._algebraic = value;
-    return this;
   }
 }
 
@@ -348,12 +434,33 @@ export function str(string: string) {
   return new Str(string);
 }
 
+export class SymString extends Atomic {
+  kind(): EXPR {
+    return EXPR.SYMSTRING;
+  }
+  toString(): string {
+    return this._string;
+  }
+  _string: string;
+  constructor(string: string) {
+    super();
+    this._string = string;
+  }
+}
+
+export function symstring(string: string) {
+  return new SymString(string);
+}
+
 /**
  * An object representing the value nil.
  */
-export class Nil extends Expression {
+export class Nil extends Atomic {
   kind(): EXPR {
     return EXPR.NIL;
+  }
+  toString(): string {
+    return "nil";
   }
   constructor() {
     super();
@@ -377,9 +484,13 @@ export function nil() {
 type RelationOperator = "=" | "<" | ">" | "<=" | ">=" | "!=";
 
 /** An object representing a relation. */
-export class Relation extends Expression {
+export class Relation extends Compound {
   kind(): EXPR {
     return EXPR.RELATION;
+  }
+  toString(): string {
+    const result = this._args.map((y) => y.toString()).join(this._op);
+    return result;
   }
   _op: RelationOperator;
   _args: Expression[];
@@ -392,15 +503,26 @@ export class Relation extends Expression {
 
 /** Returns a new Relation expression. */
 export function relate(op: RelationOperator, args: Expression[]) {
-  return new Relation(op, args)
+  return new Relation(op, args);
 }
 
 /**
  * An object representing an equation.
  */
-export class Equation extends Expression {
+export class Equation extends Compound {
   kind(): EXPR {
     return EXPR.EQUATION;
+  }
+  toString(): string {
+    const left = this._left.toString();
+    const right = this._right.toString();
+    return `${left} == ${right}`;
+  }
+  get _left() {
+    return this._args[0];
+  }
+  get _right() {
+    return this._args[1];
   }
   _args: [Expression, Expression];
   constructor(left: Expression, right: Expression) {
@@ -419,9 +541,13 @@ export function equate(left: Expression, right: Expression) {
 /**
  * An object representing a sum.
  */
-export class Sum extends Expression {
+export class Sum extends Compound {
   kind(): EXPR {
     return EXPR.SUM;
+  }
+  toString(): string {
+    const result = this._args.map((x) => x.toString()).join("+");
+    return result;
   }
   _args: Expression[];
   constructor(args: Expression[]) {
@@ -440,9 +566,13 @@ export function sum(...args: Expression[]) {
 /**
  * An object representing a difference.
  */
-export class Difference extends Expression {
+export class Difference extends Compound {
   kind(): EXPR {
     return EXPR.DIFFERENCE;
+  }
+  toString(): string {
+    const result = this._args.map((x) => x.toString()).join("-");
+    return result;
   }
   _args: EXPR[];
   constructor(args: EXPR[]) {
@@ -458,6 +588,100 @@ export function diff(...args: EXPR[]) {
   return new Difference(args);
 }
 
+/**
+ * An object representing a product expression.
+ */
+export class Product extends Compound {
+  kind(): EXPR {
+    return EXPR.PRODUCT;
+  }
+  toString(): string {
+    const result = this._args.map((x) => x.toString()).join("*");
+    return result;
+  }
+  _args: Expression[];
+  constructor(args: Expression[]) {
+    super();
+    this._args = args;
+  }
+}
+
+/** Returns a new Product expression. */
+export function product(...args: Expression[]) {
+  return new Product(args);
+}
+
+/**
+ * An object representing a quotient.
+ */
+export class Quotient extends Compound {
+  kind(): EXPR {
+    return EXPR.QUOTIENT;
+  }
+  toString(): string {
+    const result = this._args.map((x) => x.toString()).join("/");
+    return result;
+  }
+  _args: Expression[];
+  constructor(args: Expression[]) {
+    super();
+    this._args = args;
+  }
+}
+
+/** Returns a new Quotient expression. */
+export function quotient(...args: Expression[]) {
+  return new Quotient(args);
+}
+
+/**
+ * An object representing a power expression.
+ */
+export class Power extends Compound {
+  kind(): EXPR {
+    return EXPR.POWER;
+  }
+  toString(): string {
+    const result = this._args.map((x) => x.toString()).join("^");
+    return result;
+  }
+  _args: Expression[];
+  constructor(base: Expression, exponent: Expression) {
+    super();
+    this._args = [base, exponent];
+  }
+}
+
+/**
+ * Returns a new Power expression.
+ */
+export function power(base: Expression, exponent: Expression) {
+  return new Power(base, exponent);
+}
+
+/** An object corresponding to a function expression. */
+export class Func extends Compound {
+  kind(): EXPR {
+    return EXPR.FUNC;
+  }
+  toString(): string {
+    const args = this._args.map((x) => x.toString()).join(",");
+    const result = `${this._op}(${args})`;
+    return result;
+  }
+  _op: string;
+  _args: Expression[];
+  constructor(op: string, args: Expression[]) {
+    super();
+    this._op = op;
+    this._args = args;
+  }
+}
+
+/** Returns a new function expression. */
+export function func(op: string, args: Expression[]) {
+  return new Func(op, args);
+}
 
 /**
  * Represents an error generally.
@@ -530,8 +754,6 @@ export enum TOKEN {
   AMPERSAND,
   /** A token corresponding to `~` */
   TILDE,
-  /** A token corresponding to `|` */
-  VBAR,
   /** A token corresponding to `=` */
   EQUAL,
   /** A token corresponding to `<` */
@@ -550,15 +772,13 @@ export enum TOKEN {
   PLUS_PLUS,
   /** A token corresponding to `--` */
   MINUS_MINUS,
-  /** A token corresponding to `**` */
-  STAR_STAR,
 
   // Vector Operators.
   // These are operators associated with
   // vectors.
 
   /** A token corresponding to `.+` */
-  DOT_ADD,
+  DOT_PLUS,
   /** A token corresponding to `.*` */
   DOT_STAR,
   /** A token corresponding to `.-` */
@@ -574,12 +794,12 @@ export enum TOKEN {
   // These are operators associated with
   // matrices.
 
-  /** A token corresponding to `#+` */
-  POUND_PLUS,
-  /** A token corresponding to `#-` */
-  POUND_MINUS,
-  /** A token corresponding to `#*` */
-  POUND_STAR,
+  /** A token corresponding to `*+` */
+  STAR_PLUS,
+  /** A token corresponding to `*-` */
+  STAR_MINUS,
+  /** A token corresponding to `**` */
+  STAR_STAR,
 
   // Literals
   /** A token corresponding to an integer */
@@ -659,6 +879,10 @@ export enum TOKEN {
   MOD,
   /** A token corresponding to the keyword "div". */
   DIV,
+  /** A token corresponding to the keyword "begin". */
+  BEGIN,
+  /** A token corresponding to the keyword "end". */
+  END,
   /** A token corresponding to some numeric constant. */
   NUMERIC_CONSTANT,
   /** A token corresponding to some native function name. */
@@ -669,7 +893,7 @@ type Keyword =
   | "nan"
   | "inf"
   | "nil"
-  | 'undefined'
+  | "undefined"
   | "and"
   | "or"
   | "not"
@@ -692,6 +916,8 @@ type Keyword =
   | "rem"
   | "mod"
   | "div"
+  | "begin"
+  | "end"
   | "false"
   | "true";
 
@@ -746,6 +972,12 @@ export class TokenObj {
   toString() {
     return `{_token: ${TOKEN[this._token]}, _lexeme: ${this._lexeme}, _line: ${this._line}}`;
   }
+
+  isToken(token: TOKEN) {
+    return this._token === token;
+  }
+
+  static empty: TokenObj = new TokenObj(TOKEN.EMPTY, "", -1);
 
   constructor(type: TOKEN, lexeme: string, line: number) {
     this._token = type;
@@ -836,7 +1068,7 @@ type NativeConstants =
   | "log2e"
   | "sqrt2";
 
-export function lexicalAnalyzer(code: string) {
+export function lexicalAnalysis(code: string) {
   /**
    * A variable corresponding to the current
    * line the scanner's on.
@@ -1031,6 +1263,8 @@ export function lexicalAnalyzer(code: string) {
     xnor: () => tkn(TOKEN.XNOR),
     not: () => tkn(TOKEN.NOT),
     nand: () => tkn(TOKEN.NAND),
+    begin: () => tkn(TOKEN.BEGIN),
+    end: () => tkn(TOKEN.END),
   };
 
   /** Generates a word token. */
@@ -1219,7 +1453,7 @@ export function lexicalAnalyzer(code: string) {
     }
     tick();
     const s = slice().replaceAll(`'`, "");
-    return tkn(TOKEN.SYM_STRING).literal(str(s).algebraic(true));
+    return tkn(TOKEN.SYM_STRING).literal(symstring(s));
   };
 
   const scan = (): TokenObj => {
@@ -1245,20 +1479,6 @@ export function lexicalAnalyzer(code: string) {
     // an underscore, or a `$`), returns a word token.
     if (isValidNameChar(char)) {
       return wordToken();
-    }
-
-    // If the character is `#` then we might
-    // have a matrix operator.
-    if (char === "#") {
-      if (match("+")) {
-        return tkn(TOKEN.POUND_PLUS);
-      } else if (match("-")) {
-        return tkn(TOKEN.POUND_MINUS);
-      } else if (match("*")) {
-        return tkn(TOKEN.POUND_STAR);
-      } else {
-        return tkn(TOKEN.POUND);
-      }
     }
 
     // If the character is a digit,
@@ -1314,8 +1534,6 @@ export function lexicalAnalyzer(code: string) {
         return tkn(TOKEN.AMPERSAND);
       case "~":
         return tkn(TOKEN.TILDE);
-      case "|":
-        return tkn(TOKEN.VBAR);
       case "(":
         return tkn(TOKEN.LEFT_PAREN);
       case ")":
@@ -1330,8 +1548,17 @@ export function lexicalAnalyzer(code: string) {
         return tkn(TOKEN.RIGHT_BRACE);
       case ",":
         return tkn(TOKEN.COMMA);
-      case "*":
-        return tkn(match("*") ? TOKEN.STAR_STAR : TOKEN.STAR);
+      case "*": {
+        if (match("+")) {
+          return tkn(TOKEN.STAR_PLUS);
+        } else if (match("-")) {
+          return tkn(TOKEN.STAR_MINUS);
+        } else if (match("*")) {
+          return tkn(TOKEN.STAR_STAR);
+        } else {
+          return tkn(TOKEN.STAR);
+        }
+      }
       case ";":
         return tkn(TOKEN.SEMICOLON);
       case "%":
@@ -1340,6 +1567,8 @@ export function lexicalAnalyzer(code: string) {
         return tkn(TOKEN.SLASH);
       case "^":
         return tkn(TOKEN.CARET);
+      case "#":
+        return tkn(TOKEN.POUND);
       case "!":
         return tkn(match("=") ? TOKEN.BANG_EQUAL : TOKEN.BANG);
       case "<":
@@ -1350,7 +1579,7 @@ export function lexicalAnalyzer(code: string) {
         return tkn(match("+") ? TOKEN.PLUS_PLUS : TOKEN.PLUS);
       case ".": {
         if (match("+")) {
-          return tkn(TOKEN.DOT_ADD);
+          return tkn(TOKEN.DOT_PLUS);
         } else if (match("-")) {
           return tkn(TOKEN.DOT_MINUS);
         } else if (match("*")) {
@@ -1449,6 +1678,375 @@ export function lexicalAnalyzer(code: string) {
   };
 }
 
+enum AST_NODE_TYPE {
+  ASSIGNMENT,
+  BINEX,
+  CALL,
+  PROP_READ,
+  PROP_WRITE,
+  PAREND,
+  UNEX,
+  LIT,
+  BLOCK,
+  EXPRESSION,
+  CONDITIONAL,
+}
+
+interface Visitor<T> {
+  assignment(node: Assignment): T;
+  binex(node: Binex): T;
+  call(node: Call): T;
+  propRead(node: PropRead): T;
+  propWrite(node: PropWrite): T;
+  parend(node: Parend): T;
+  unex(node: Unex): T;
+  lit(node: Lit): T;
+  BLOCK(node: BLOCK): T;
+  EXPRESSION(node: EXPRESSION): T;
+  CONDITIONAL(node: CONDITIONAL): T;
+}
+
+abstract class ASTNode {
+  abstract accept<T>(visitor: Visitor<T>): T;
+  abstract toString(): string;
+  abstract isStatementNode(): this is StatementNode;
+  abstract isExpressionNode(): this is ExpressionNode;
+  abstract kind(): AST_NODE_TYPE;
+}
+
+abstract class StatementNode extends ASTNode {
+  isStatementNode(): this is StatementNode {
+    return true;
+  }
+  isExpressionNode(): this is ExpressionNode {
+    return false;
+  }
+}
+
+abstract class ExpressionNode extends ASTNode {
+  isStatementNode(): this is StatementNode {
+    return false;
+  }
+  isExpressionNode(): this is ExpressionNode {
+    return true;
+  }
+}
+
+/** An object representing an Assignment AST node. */
+class Assignment extends ExpressionNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.assignment(this);
+  }
+  toString(): string {
+    const _name = this._name._lexeme;
+    const _value = this._value.toString();
+    return `${_name} = ${_value}`;
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.ASSIGNMENT;
+  }
+  _name: TokenObj;
+  _value: ExpressionNode;
+  constructor(name: TokenObj, value: ExpressionNode) {
+    super();
+    this._name = name;
+    this._value = value;
+  }
+}
+
+/** Returns a new Assignment node. */
+function assignment(name: TokenObj, value: ExpressionNode) {
+  return new Assignment(name, value);
+}
+
+/** An object corresponding to a binary expression node. */
+class Binex extends ExpressionNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.binex(this);
+  }
+  toString(): string {
+    const left = this._left.toString();
+    const op = this._op._lexeme;
+    const right = this._right.toString();
+    return `${left}${op}${right}`;
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.BINEX;
+  }
+  _left: ExpressionNode;
+  _op: TokenObj;
+  _right: ExpressionNode;
+  constructor(left: ExpressionNode, op: TokenObj, right: ExpressionNode) {
+    super();
+    this._left = left;
+    this._op = op;
+    this._right = right;
+  }
+}
+
+/** Returns a new Binex node. */
+function binex(left: ExpressionNode, op: TokenObj, right: ExpressionNode) {
+  return new Binex(left, op, right);
+}
+
+/**
+ * An object representing a function call AST node.
+ */
+class Call extends ExpressionNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.call(this);
+  }
+  toString(): string {
+    throw new Error("Method not implemented.");
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.CALL;
+  }
+  _callee: ExpressionNode;
+  _paren: TokenObj;
+  _args: ExpressionNode[];
+  constructor(callee: ExpressionNode, paren: TokenObj, args: ExpressionNode[]) {
+    super();
+    this._callee = callee;
+    this._paren = paren;
+    this._args = args;
+  }
+}
+
+/** Returns a new Call node. */
+function call(callee: ExpressionNode, paren: TokenObj, args: ExpressionNode[]) {
+  return new Call(callee, paren, args);
+}
+
+/** An object representing a "property read" expression. */
+class PropRead extends ExpressionNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.propRead(this);
+  }
+  toString(): string {
+    const obj = this._object.toString();
+    const name = this._name._lexeme;
+    return `${obj}.${name}`;
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.PROP_READ;
+  }
+  _object: ExpressionNode;
+  _name: TokenObj;
+  constructor(object: ExpressionNode, name: TokenObj) {
+    super();
+    this._object = object;
+    this._name = name;
+  }
+}
+
+/**
+ * Returns a new "property read" expression node.
+ */
+function propRead(object: ExpressionNode, name: TokenObj) {
+  return new PropRead(object, name);
+}
+
+/**
+ * An object representing a "property write" expression.
+ * @example
+ * ~~~ts
+ * circle.radius = 10;
+ * ~~~
+ */
+class PropWrite extends ExpressionNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.propWrite(this);
+  }
+  toString(): string {
+    throw new Error("Method not implemented.");
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.PROP_WRITE;
+  }
+  _object: ExpressionNode;
+  _name: TokenObj;
+  _value: TokenObj;
+  constructor(object: ExpressionNode, name: TokenObj, value: TokenObj) {
+    super();
+    this._object = object;
+    this._name = name;
+    this._value = value;
+  }
+}
+
+/** Returns a new `property write` expression. */
+export function propWrite(
+  object: ExpressionNode,
+  name: TokenObj,
+  value: TokenObj
+) {
+  return new PropWrite(object, name, value);
+}
+
+/**
+ * An object representing a parenthesized expression.
+ */
+class Parend extends ExpressionNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.parend(this);
+  }
+  toString(): string {
+    const expression = this._expression.toString();
+    return `(${expression})`;
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.PAREND;
+  }
+  _expression: ExpressionNode;
+  constructor(expression: ExpressionNode) {
+    super();
+    this._expression = expression;
+  }
+}
+
+/** Returns a new parenthesized expression node. */
+function parend(expression: ExpressionNode) {
+  return new Parend(expression);
+}
+
+/** An object representing as unary expression. */
+class Unex extends ExpressionNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.unex(this);
+  }
+  toString(): string {
+    const op = this._op._lexeme;
+    const arg = this._arg.toString();
+    if (this._fix) {
+      return `(${arg})${op}`;
+    } else {
+      return `${op}(${arg})`;
+    }
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.UNEX;
+  }
+  /**
+   * A flag indicating whether this unary
+   * expression is a unary prefix or unary postfix
+   * expression.
+   * 
+   * `0` = unary prefix.
+   *  
+   * `1` = unary postfix. 
+   */
+  _fix: 0|1;
+  /** This unary expression's operator. */
+  _op: TokenObj;
+  /** This unary expression's argument. */
+  _arg: ExpressionNode;
+  constructor(operator: TokenObj, arg: ExpressionNode, fix: 0|1) {
+    super();
+    this._op = operator;
+    this._arg = arg;
+    this._fix = fix;
+  }
+}
+
+/** Returns a new unary prefix expression node. */
+function unaryPrefix(op: TokenObj, arg: ExpressionNode) {
+  return new Unex(op, arg, 0);
+}
+
+/** Returns a new unary postfix expression node. */
+function unaryPostfix(op: TokenObj, arg: ExpressionNode) {
+  return new Unex(op, arg, 1);
+}
+
+class Lit extends ExpressionNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.lit(this);
+  }
+  toString(): string {
+    return this._value.toString();
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.LIT;
+  }
+  _value: Expression;
+  constructor(value: Expression) {
+    super();
+    this._value = value;
+  }
+}
+
+// § Statements
+// The following classes relate to AST nodes corresponding
+// to statements.
+
+/**
+ * An object representing a Block
+ * statement node.
+ */
+class BLOCK extends StatementNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.BLOCK(this);
+  }
+  toString(): string {
+    const statements = this._statements.map(s => s.toString());
+    return `BLOCK: ${statements.join('\n')}`
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.BLOCK;
+  }
+  _statements: StatementNode[];
+  constructor(statements: StatementNode[]) {
+    super();
+    this._statements = statements;
+  }
+}
+
+/** Returns a new Block statement node. */
+export function block(statements: StatementNode[]) {
+  return new BLOCK(statements);
+}
+
+/** An object representing an expression statement. */
+class EXPRESSION extends StatementNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.EXPRESSION(this);
+  }
+  toString(): string {
+    const expr = this._expression.toString();
+    return `EXPRESSION: ${expr}`;
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.EXPRESSION;
+  }
+  _expression: ExpressionNode;
+  constructor(expression: ExpressionNode) {
+    super();
+    this._expression = expression;
+  }
+}
+
+/** Returns a new Expression statement node. */
+function expression(expr: ExpressionNode) {
+  return new EXPRESSION(expr)
+}
+
+class CONDITIONAL extends StatementNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.CONDITIONAL(this);
+  }
+  toString(): string {
+    throw new Error("Method not implemented.");
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.CONDITIONAL;
+  }
+}
+
+export function syntaxAnalysis(source: string) {
+  // const state = enstate()
+}
+
 /**
  * The binding power of a given operator.
  * Values of type `bp` are used the parsers
@@ -1480,5 +2078,114 @@ enum BP {
   CALL,
 }
 
-export function syntaxAnalysis() {}
+class ParserState<STMT extends ASTNode, EXPR extends ASTNode> {
+  _error: ERROR | null = null;
+  _prev: TokenObj = TokenObj.empty;
+  _cursor: number = -1;
+  _peek: TokenObj = TokenObj.empty;
+  _current: TokenObj = TokenObj.empty;
+  _lastExpression: EXPR;
+  _currentExpression: EXPR;
+  _lastStatement: AST_NODE_TYPE;
+  _currentStatement: AST_NODE_TYPE;
+  constructor(nilExpression: EXPR, emptyStatement: STMT) {
+    this._lastExpression = nilExpression;
+    this._currentExpression = nilExpression;
+    this._lastStatement = emptyStatement.kind();
+    this._currentStatement = emptyStatement.kind();
+  }
+  private _lexer!: ReturnType<typeof lexicalAnalysis>;
+  init(source: string) {
+    this._lexer = lexicalAnalysis(source);
+    this.next();
+    return this;
+  }
+  /** Returns true if an implicit semicolon is permissible. */
+  implicitSemicolonAllowed() {
+    return this._peek.isToken(TOKEN.EOF) || this.atEnd();
+  }
 
+  /** Returns a new expression (in a RIGHT monad). */
+  newExpression<E extends EXPR>(expression: E) {
+    const prev = this._currentExpression;
+    this._currentExpression = expression;
+    this._lastExpression = prev;
+    return right(expression);
+  }
+
+  /** Returns a new statement (in a RIGHT monad). */
+  newStatement<S extends STMT>(statement: S) {
+    const prev = this._currentStatement;
+    this._currentStatement = statement.kind();
+    this._lastStatement = prev;
+    return right(statement);
+  }
+
+  /** Moves the parser state forward. */
+  next() {
+    this._cursor++;
+    this._current = this._peek;
+    const nextToken = this._lexer.scan();
+    if (nextToken.isToken(TOKEN.ERROR)) {
+      this._error = nextToken._literal as unknown as ERROR;
+      return TOKEN.EOF;
+    }
+    this._peek = nextToken;
+    return this._current;
+  }
+
+  /** Returns true if there is nothing left to parse. */
+  atEnd() {
+    return this._peek.isToken(TOKEN.EOF) || this._error !== null;
+  }
+
+  /** Returns a new error in a LEFT monad. */
+  error(message: string, line: number) {
+    const e = syntaxError(message, line);
+    this._error = e;
+    return left(e);
+  }
+
+  /** Returns true if the current token is of the given TOKEN. */
+  check(token: TOKEN) {
+    if (this.atEnd()) {
+      return false;
+    }
+    return this._peek.isToken(token);
+  }
+
+  /**
+   * Returns true and moves the parser forward if the next
+   * token matches the provided TOKEN.
+   */
+  nextIs(token: TOKEN) {
+    if (this._peek.isToken(token)) {
+      this.next();
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+
+/**
+ * A function that returns a new parser state.
+ * @param nilExpr A nil expression to serve as a placeholder expression.
+ * @param emptyStmt An empty statement to serve as a placeholder statement.
+ * @returns A new Parser State.
+ */
+function enstate<EXPR extends ASTNode, STMT extends ASTNode>(
+  nilExpression: EXPR,
+  emptyStatement: STMT
+) {
+  return new ParserState(nilExpression, emptyStatement);
+}
+
+/** @internal A Pratt parsing function. */
+type Parslet<T> = (current: TokenObj, lastNode: T) => Either<ERROR, T>;
+
+/** @internal An entry within parser’s BP table. The first element is a prefix parslet, the second element is an infix parslet, and the last element is the binding power of the operator. */
+type ParsletEntry<T> = [Parslet<T>, Parslet<T>, BP];
+
+/** @internal A record of parslet entries, where each key is a TOKEN. */
+type BPTable<T> = Record<TOKEN, ParsletEntry<T>>;

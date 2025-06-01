@@ -1,34 +1,381 @@
 import MdxLayout from "../../components/mdx-layout";
+import {RUNTIME_CLASSES} from "../../components/Diagrams";
 
 # Documentation
 
 <TOC>
 
+- [The Ora Language](#the-ora-language)
+  - [Arithmetic Expressions](#arithmetic-expressions)
+    - [Addition](#addition)
+    - [Subtraction](#subtraction)
+  - [Block Statements](#block-statements)
+  - [Conditional Logic](#conditional-logic)
+    - [If-else Statements](#if-else-statements)
+    - [Ternary Expressions](#ternary-expressions)
+    - [Branch Expressions](#branch-expressions)
+- [Operators](#operators)
 - [Reserved Words](#reserved-words)
-- [~class~ Expression](#class-expression)
-	- [~method~ _Expression_`.kind()`](#method-expressionkind)
-- [~class~ Integer](#class-integer)
-	- [~function~ `int`](#function-int)
-	- [~function~ `isInt`](#function-isint)
-	- [~property~ _Integer_`._value`](#property-integer_value)
-- [~class~ `BigInteger`](#class-biginteger)
-	- [~function~ `bigint`](#function-bigint)
-	- [~function~ `isBigInt`](#function-isbigint)
-- [~class~ `Float`](#class-float)
-	- [~function~ `float`](#function-float)
-- [~class~ `BigFloat`](#class-bigfloat)
-	- [~property~ _BigFloat_`._m`](#property-bigfloat_m)
-	- [~property~ _BigFloat_`._n`](#property-bigfloat_n)
-	- [~function~ `bigfloat`](#function-bigfloat)
-- [~class~ `Fraction`](#class-fraction)
-	- [~function~ `frac`](#function-frac)
-- [~class~ `BigFraction`](#class-bigfraction)
-	- [~function~ `bigfrac`](#function-bigfrac)
+- [AST Nodes](#ast-nodes)
+  - [~class~ `ASTNode`](#class-astnode)
+    - [~method~ _ASTNode_`.accept(𝑉𝑖𝑠𝑖𝑡𝑜𝑟)`](#method-astnodeaccept𝑉𝑖𝑠𝑖𝑡𝑜𝑟)
+    - [~method~ _ASTNode_`.toString()`](#method-astnodetostring)
+    - [~method~ _ASTNode_`.isStatementNode()`](#method-astnodeisstatementnode)
+    - [~method~ _ASTNode_`.isExpressionNode()`](#method-astnodeisexpressionnode)
+  - [~class~ `StatementNode`](#class-statementnode)
+  - [~class~ `ExpressionNode`](#class-expressionnode)
+- [Runtime Objects](#runtime-objects)
+  - [~class~ Expression](#class-expression)
+    - [~method~ _Expression_`.kind()`](#method-expressionkind)
+  - [~class~ Integer](#class-integer)
+    - [~function~ `int`](#function-int)
+    - [~function~ `isInt`](#function-isint)
+    - [~property~ _Integer_`._value`](#property-integer_value)
+  - [~class~ `BigInteger`](#class-biginteger)
+    - [~function~ `bigint`](#function-bigint)
+    - [~function~ `isBigInt`](#function-isbigint)
+  - [~class~ `Float`](#class-float)
+    - [~function~ `float`](#function-float)
+  - [~class~ `BigFloat`](#class-bigfloat)
+    - [~property~ _BigFloat_`._m`](#property-bigfloat_m)
+    - [~property~ _BigFloat_`._n`](#property-bigfloat_n)
+    - [~function~ `bigfloat`](#function-bigfloat)
+  - [~class~ `Fraction`](#class-fraction)
+    - [~function~ `frac`](#function-frac)
+  - [~class~ `BigFraction`](#class-bigfraction)
+    - [~function~ `bigfrac`](#function-bigfrac)
 - [Casting Rules for Literals](#casting-rules-for-literals)
 
 </TOC>
 
 Ora is written in TypeScript and deployed in JavaScript. This page documents Ora's architecture.
+
+## The Ora Language
+This section outlines the grammar and syntax of Ora. 
+
+### Arithmetic Expressions
+Like most languages, Ora supports basic arithmetic expressions.
+
+#### Addition
+Addition uses the syntax:
+
+$$
+  a ~~ \texttt{+} ~~ b
+$$
+
+where ${a}$ and ${b}$ are either numeric expressions or expressions that reduce to numeric expressions.
+
+<Example>`3 + 2` reduces to `5`.</Example>
+
+<Example>`-4 + 1` reduces to `-3`.</Example>
+
+<Example>`2.8 + 1.1` reduces to `3.9`.</Example>
+
+<Example>
+Adding a floating point number to an integer results in a floating point number.
+
+`5.0 + 1` reduces to `6.0`.
+
+</Example>
+
+
+#### Subtraction
+Subtraction uses the syntax:
+
+$$
+  a ~~ \texttt{-} ~~ b
+$$
+
+where ${a}$ and ${b}$ are either numeric expressions or expressions that reduce to numeric expressions.
+
+### Block Statements
+A _block statement_ is a discrete and finite sequence of statements. In Ora, block statements are delimited by the `begin` and `end` keywords. 
+
+<Procedure>
+
+1. __begin__
+   1. ${S_0}$`;`
+   2. ${S_1}$`;`
+   3. `⋮`
+   4. ${S_n}$`;`
+2. __end__
+
+</Procedure>
+
+
+### Conditional Logic
+There are several constructs for expressing conditional logic.
+
+
+#### If-else Statements
+An _if-else statement_ provides an imperative approach to conditional logic. The syntax is as follows:  
+
+<Procedure>
+
+1. __if__ ${C}$ __begin__
+     1. ${B_1}$
+2. __end__
+3. __else__ __begin__
+     1. ${B_2}$ 
+4. __end__
+
+</Procedure>
+
+where ${C}$ is a condition, and ${B_1}$ and ${B_2}$ are a sequence of statements. I.e., if ${C}$ is true, execute block ${B_1,}$ otherwise execute block ${B_2.}$
+
+#### Ternary Expressions
+A ternary expression takes the following syntax:
+
+$$
+  b ~~~ \texttt{?} ~~~ e_1 : e_2
+$$
+
+where ${b}$ is a Boolean expression, and ${e_1}$ and ${e_2}$ are expressions. If ${b}$ reduces to true, than the ternary expression reduces to ${e_1.}$ Otherwise, the ternary expression reduces to ${e_2.}$
+
+#### Branch Expressions
+A branch expression takes the following syntax:
+
+<Procedure>
+
+1. __branch__`(`
+    1. ${b_1 ~~\texttt{->}~~ e_1,}$
+    2. ${b_2 ~~\texttt{->}~~ e_2,}$
+    3. `⋮`
+    4. ${b_{n} ~~ \texttt{->} ~~ e_{n}}$
+2. `)`
+
+</Procedure>
+
+where ${b_1, \ldots, b_n}$ are Boolean expressions and ${e_1 \ldots e_n}$ are expressions. During evaluation, a branch expression reduces to the expression mapped to by the first of ${b_1, \ldots, b_n}$ that reduces to `true`. 
+
+## Operators
+Throughout Ora's documentation, we discuss and classify operators according to the number of operands they take and the location of the operands relative to the operator. Some terminology to aid these discussions:
+
+- A __unary postfix operator__ is an operator with one operand that immediately preceds the operator. E.g., in ${n!}$ the factorial operator (${!}$) is a unary postfix operator. 
+- A __unary prefix operator__ is an operator with one operand that immediately follows the operator. E.g., in ${-n,}$ the negation operator (${-}$) is a unary prefix operator. 
+- A __function prefix operator__ is an expression in function notation with one or more operands. E.g., in ${f(x,y,z),}$ the function name ${f}$ is a function prefix operator with three operands, ${x,}$ ${y,}$ and ${z.}$ 
+- A __binary infix operator__ is an operator with two operands straddling the operator. E.g,. in ${a \times b,}$ the operator ${\times}$ is a binary infix operator with operands ${a}$ and ${b.}$
+- An __𝒏-ary infix operator__ is an operator with two or more operators adjacent to some occurrence of the operator. E.g., in ${a + b + c,}$ the operator ${+}$ is an ${n}$-ary infix operator.
+
+Ora has several operators, classified as follows:
+
+<table id="operator_table">
+	<thead>
+		<tr>
+			<th>Operator</th>
+			<th>`TOKEN`</th>
+			<th>Operation</th>
+			<th>Classification</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>`+`</td>
+			<td>`PLUS`</td>
+			<td>addition</td>
+			<td>binary infix / ${n}$-ary infix</td>
+		</tr>
+		<tr>
+			<td>`-`</td>
+			<td>`MINUS`</td>
+			<td>subtraction</td>
+			<td>binary infix / ${n}$-ary infix</td>
+		</tr>
+		<tr>
+			<td>`*`</td>
+			<td>`STAR`</td>
+			<td>multiplication</td>
+			<td>binary infix / ${n}$-ary infix</td>
+		</tr>
+		<tr>
+			<td>`/`</td>
+			<td>`SLASH`</td>
+			<td>division</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`^`</td>
+			<td>`CARET`</td>
+			<td>exponentiation</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`%`</td>
+			<td>`PERCENT`</td>
+			<td>percentage</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`!`</td>
+			<td>`BANG`</td>
+			<td>factorial</td>
+			<td>unary postfix</td>
+		</tr>
+		<tr>
+			<td>`&`</td>
+			<td>`AMPERSAND`</td>
+			<td>concatenation</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`~`</td>
+			<td>`TILDE`</td>
+			<td>equivalence claim</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`=`</td>
+			<td>`EQUAL`</td>
+			<td>assignment</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`==`</td>
+			<td>`EQUAL_EQUAL`</td>
+			<td>equality claim</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`<`</td>
+			<td>`LESS`</td>
+			<td>less-than comparison</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`>`</td>
+			<td>`GREATER`</td>
+			<td>greater-than comparison</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`<=`</td>
+			<td>`LESS_EQUAL`</td>
+			<td>less-than-or-equal-to comparison</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`>=`</td>
+			<td>`GREATER_EQUAL`</td>
+			<td>greater-than-or-equal-to comparison</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`!=`</td>
+			<td>`BANG_EQUAL`</td>
+			<td>not-equal claim</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`++`</td>
+			<td>`PLUS_PLUS`</td>
+			<td>increment</td>
+			<td>unary postfix</td>
+		</tr>
+		<tr>
+			<td>`--`</td>
+			<td>`MINUS_MINUS`</td>
+			<td>decrement</td>
+			<td>unary postfix</td>
+		</tr>
+		<tr>
+			<td>`.+`</td>
+			<td>`DOT_PLUS`</td>
+			<td>pairwise addition</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`.-`</td>
+			<td>`DOT_MINUS`</td>
+			<td>pairwise subtraction</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`.^`</td>
+			<td>`DOT_CARET`</td>
+			<td>pairwise exponentiation</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`.*`</td>
+			<td>`DOT_STAR`</td>
+			<td>pairwise multiplication</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`@`</td>
+			<td>`AT`</td>
+			<td>dot product</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`#`</td>
+			<td>`POUND`</td>
+			<td>array length / matrix size / set size</td>
+			<td>unary prefix</td>
+		</tr>
+		<tr>
+			<td>`*+`</td>
+			<td>`STAR_PLUS`</td>
+			<td>matrix addition</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`*-`</td>
+			<td>`STAR_MINUS`</td>
+			<td>matrix subtraction</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`**`</td>
+			<td>`STAR_STAR`</td>
+			<td>matrix multiplication</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`and`</td>
+			<td>`AND`</td>
+			<td>logical and</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`or`</td>
+			<td>`OR`</td>
+			<td>logical or</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`not`</td>
+			<td>`NOT`</td>
+			<td>logical not</td>
+			<td>unary prefix</td>
+		</tr>
+		<tr>
+			<td>`nand`</td>
+			<td>`NAND`</td>
+			<td>logical nand</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`xor`</td>
+			<td>`XOR`</td>
+			<td>logical xor</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`xnor`</td>
+			<td>`XNOR`</td>
+			<td>logical xnor</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`nor`</td>
+			<td>`NOR`</td>
+			<td>logical nor</td>
+			<td>binary infix</td>
+		</tr>
+	</tbody>
+</table>
+
 
 ## Reserved Words
 The following words cannot be used as variable or function names.
@@ -48,6 +395,8 @@ The following words cannot be used as variable or function names.
 - `if`
 - `else`
 - `fn`
+- `begin`
+- `end`
 
 </div>
 <div>
@@ -107,8 +456,38 @@ The following words cannot be used as variable or function names.
 
 </Cols>
 
-## ~class~ Expression
+## AST Nodes
+Ora programs undergo syntax analysis, resulting in AST (Abstract Syntax Tree). This AST is constructed with instances of `ASTNode` — objects corresponding to nodes within the AST. The following sections explain the various AST node type. 
 
+### ~class~ `ASTNode`
+All AST nodes extend from the class `ASTNode`. This is an abstract class with four methods: (1) `accept`, (2) `toString`, (3) `isStatementNode`, and (4) `isExpressionNode`.  
+
+#### ~method~ _ASTNode_`.accept(𝑉𝑖𝑠𝑖𝑡𝑜𝑟)`
+To evaluate expressions, Ora uses the _Visitor pattern_. This pattern is implemented by ensuring every AST node has a method called `accept`, which takes a single argument—an object that implements the `Visitor` interface.
+
+#### ~method~ _ASTNode_`.toString()`
+Taking no arguments, this method returns a string representation of the AST node.
+
+#### ~method~ _ASTNode_`.isStatementNode()`
+Taking no arguments, this method returns true if the callee is a [`StatementNode`](#class-statementnode), and false otherwise.
+
+#### ~method~ _ASTNode_`.isExpressionNode()`
+Taking no arguments, this method returns true if the callee is an [`ExpressionNode`](#class-expressionnode), and false otherwise.
+
+### ~class~ `StatementNode`
+Statements in Ora are represented within an AST as a `StatementNode`.
+
+### ~class~ `ExpressionNode`
+Expressions in Ora are represented within an AST as an `ExpressionNode`.
+
+## Runtime Objects
+Once an Ora program is tokenized and parsed, the final result is an AST (Abstract Syntax Tree). That tree is sent to an interpreter for execution. The result of an execution is an `Expression` object. Ora's runtime classes follow a fairly simple inheritance structure:
+
+<RUNTIME_CLASSES/>
+
+The following sections explain the various objects that may result at runtime. 
+
+### ~class~ Expression
 Ora uses objects (class instances) to represent expressions. All these objects inherit from the abstract class `Expression`. As its name suggests, instances of `Expression` represent expressions. Ora natively implements the following expressions:
 
 1. [`Integer`](#class-integer)
@@ -127,7 +506,7 @@ Ora uses objects (class instances) to represent expressions. All these objects i
 14. `LogicOp`
 15. `SetOp`
 
-### ~method~ _Expression_`.kind()`
+#### ~method~ _Expression_`.kind()`
 
 All instances of `Expression` have a method called `kind`. This method takes no arguments and returns a value of type `EXPR` (implemented as an enum). The returned value corresponds to the `Expression`'s type name. The `kind` method allows us to determine what a given `Expression` is.
 
@@ -139,11 +518,11 @@ All instances of `Expression` have a method called `kind`. This method takes no 
 | _BigReal_`.kind()`    | `EXPR.BIG_REAL`    |
 | _Fraction_`.kind()`   | `EXPR.FRACTION`    |
 
-## ~class~ Integer
+### ~class~ Integer
 
 The `Integer` class corresponds to the set of integers within JavaScript's safe range for number type data (${[-2^{53} - 1, 2^{53} - 1]}$). Internally, Ora compares values to JavaScript's `Number.MAX_SAFE_INTEGER` to determine whether to cast values to `BigInteger`.
 
-### ~function~ `int`
+#### ~function~ `int`
 
 Returns a new `Integer`:
 
@@ -151,7 +530,7 @@ Returns a new `Integer`:
 const n = int(5); // n is an Integer, of value 5.
 ```
 
-### ~function~ `isInt`
+#### ~function~ `isInt`
 
 This function has the signature:
 
@@ -161,7 +540,7 @@ $$
 
 More specifically, given an [`Expression`](#class-expression) ${x,}$ returns true if ${x}$ is an [`Integer`](#class-integer), false otherwise. Within TypeScript, this function will assert that ${x}$ is an [`Integer`](#class-integer). We use this function to explicitly check if a given expression is an `Integer`.
 
-### ~property~ _Integer_`._value`
+#### ~property~ _Integer_`._value`
 
 Given an `Integer` ${x,}$ the expression ${x.\texttt{value}}$ reduces to the value of ${x.}$
 
@@ -170,11 +549,11 @@ const x = int(1);
 console.log(x._value); // prints 1
 ```
 
-## ~class~ `BigInteger`
+### ~class~ `BigInteger`
 
 The `BigInteger` class corresponds to the set of integers outside the safe range for number type (${[-2^{53} - 1, 2^{53} - 1]}$).
 
-### ~function~ `bigint`
+#### ~function~ `bigint`
 
 Returns a new `BigInteger`:
 
@@ -182,7 +561,7 @@ Returns a new `BigInteger`:
 const b = bigint(5000); // b is a BigInteger, of value 5000.
 ```
 
-### ~function~ `isBigInt`
+#### ~function~ `isBigInt`
 
 This function has the signature:
 
@@ -192,35 +571,35 @@ $$
 
 That is, given an [`Expression`](#class-expression) ${x,}$ the function `isBigInt` returns true, and type-asserts, only if ${x}$ is a [`BigInteger`](#class-biginteger). We use this function to explicitly check whether a given expression is a `BigInteger`.
 
-## ~class~ `Float`
+### ~class~ `Float`
 
 The `Float` class corresponds to floating point numbers. E.g., 3.1, 2.8, 9.99, etc.
 
-### ~function~ `float`
+#### ~function~ `float`
 
 Returns a new `Float`.
 
-## ~class~ `BigFloat`
+### ~class~ `BigFloat`
 
 The `BigFloat` class corresponds to arbitrary precision floating point numbers. Expressions of type `BigFloat` are interpreted as numbers of the form ${m \times 10^n,}$ where ${m}$ is a real number and ${n}$ is an integer.
 
-### ~property~ _BigFloat_`._m`
+#### ~property~ _BigFloat_`._m`
 
 Given a `BigFloat` ${b,}$ the expression ${b.\texttt{\_m}}$ corresponds to the mantissa of ${b}$ (i.e., the ${m}$ in ${b = m \times 10^n}$). For example, if ${b = 1.4592 \times 10^{-15},}$ then ${m = 1.4592.}$
 
-### ~property~ _BigFloat_`._n`
+#### ~property~ _BigFloat_`._n`
 
 Given a `BigFloat` ${b,}$ the expression ${b.\texttt{\_n}}$ corresponds to the exponent of ${b}$ (i.e., the ${n}$ in ${b = m \times 10^n}$). For example, if ${b = 1.4592 \times 10^{-15},}$ then ${n = -15.}$
 
-### ~function~ `bigfloat`
+#### ~function~ `bigfloat`
 
 Given a JavaScript number or string ${m}$ and a JavaScript number ${n,}$ returns a new `BigFloat` of the form ${m \times 10^n.}$ The argument ${n}$ must be an integer.
 
-## ~class~ `Fraction`
+### ~class~ `Fraction`
 
 The `Fraction` class corresponds to rational numbers. That is, numbers of the form ${a/b,}$ where ${a}$ and ${b}$ are integers.
 
-### ~function~ `frac`
+#### ~function~ `frac`
 
 This function has the signature:
 
@@ -234,11 +613,11 @@ That is, given two arguments ${a}$ and ${b}$—both of which are either an [`Int
 const r = frac(1, 3); // r is the Fraction 1/3.
 ```
 
-## ~class~ `BigFraction`
+### ~class~ `BigFraction`
 
 In most cases, [`Fraction`](#class-fraction) objects in Ora suffice for representing rational numbers. Arbitrary precision rational numbers, however, are best represented by `BigFraction` objects. Like `Fraction`s, `BigFraction`s are numbers of the form ${a/b,}$ except ${a}$ and ${b}$ are either JavaScript `bigint`s or instances of [`BigInteger`](#class-biginteger).
 
-### ~function~ `bigfrac`
+#### ~function~ `bigfrac`
 
 This is a binary function with the signature:
 
