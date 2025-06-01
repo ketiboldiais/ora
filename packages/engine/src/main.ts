@@ -862,7 +862,7 @@ export enum TOKEN {
   /** A token corresponding to the keyword "return". */
   RETURN,
   /** A token corresponding to the keyword "while". */
-  WHILE,
+  LOOP,
   /** A token corresponding to the keyword "for". */
   FOR,
   /** A token corresponding to the keyword "class". */
@@ -1244,7 +1244,7 @@ export function lexicalAnalysis(code: string) {
     inf: () => tkn(TOKEN.INF).literal(inf("+")),
     undefined: () => tkn(TOKEN.UNDEFINED).literal(UNDEFINED()),
     return: () => tkn(TOKEN.RETURN),
-    while: () => tkn(TOKEN.WHILE),
+    while: () => tkn(TOKEN.LOOP),
     for: () => tkn(TOKEN.FOR),
     let: () => tkn(TOKEN.LET),
     var: () => tkn(TOKEN.VAR),
@@ -1690,6 +1690,10 @@ enum AST_NODE_TYPE {
   BLOCK,
   EXPRESSION,
   CONDITIONAL,
+  PRINT,
+  FUNCTION_DECLARATION,
+  VARIABLE_DECLARATION,
+  LOOP,
 }
 
 interface Visitor<T> {
@@ -1704,6 +1708,10 @@ interface Visitor<T> {
   BLOCK(node: BLOCK): T;
   EXPRESSION(node: EXPRESSION): T;
   CONDITIONAL(node: CONDITIONAL): T;
+  PRINT(node: PRINT): T;
+  FUNCTION_DECLARATION(node: FUNCTION_DECLARATION): T;
+  VARIABLE_DECLARATION(node: VARIABLE_DECLARATION): T;
+  LOOP(node: LOOP): T;
 }
 
 abstract class ASTNode {
@@ -1990,7 +1998,7 @@ class BLOCK extends StatementNode {
   }
   toString(): string {
     const statements = this._statements.map(s => s.toString());
-    return `BLOCK: ${statements.join('\n')}`
+    return `BLOCK: ${statements.join('\n')}\n`
   }
   kind(): AST_NODE_TYPE {
     return AST_NODE_TYPE.BLOCK;
@@ -2014,7 +2022,7 @@ class EXPRESSION extends StatementNode {
   }
   toString(): string {
     const expr = this._expression.toString();
-    return `EXPRESSION: ${expr}`;
+    return `EXPRESSION: ${expr}\n`;
   }
   kind(): AST_NODE_TYPE {
     return AST_NODE_TYPE.EXPRESSION;
@@ -2065,6 +2073,115 @@ class CONDITIONAL extends StatementNode {
  */
 function conditional(condition: ExpressionNode, thenBranch: StatementNode, elseBranch: StatementNode) {
   return new CONDITIONAL(condition, thenBranch, elseBranch)
+}
+
+/** An object representing a print statement. */
+class PRINT extends StatementNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.PRINT(this);
+  }
+  toString(): string {
+    return `PRINT: ${this._expression.toString()}\n`;
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.PRINT;
+  }
+  
+  _expression: ExpressionNode;
+  constructor(expression: ExpressionNode) {
+    super();
+    this._expression = expression;
+  }
+}
+
+class FUNCTION_DECLARATION extends StatementNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.FUNCTION_DECLARATION(this);
+  }
+  toString(): string {
+    const a = `FUNCTION_DECLARATION:\n`;
+    const b = a + `\tNAME: ${this._name._lexeme}\n`;
+    const c = b + `\tPARAMS: (${this._params.map(t => t._lexeme).join(',')})\n`;
+    const d = c + `\tBODY: ${this._body.map(s => s.toString()).join('\n')}`;
+    return d;
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.FUNCTION_DECLARATION;
+  }
+  _name: TokenObj;
+  _params: TokenObj[];
+  _body: StatementNode[];
+  constructor(name: TokenObj, params: TokenObj[], body: StatementNode[]) {
+    super();
+    this._name = name;
+    this._params = params;
+    this._body = body;
+  }
+}
+
+function functionDeclaration(name: TokenObj, params: TokenObj[], body: StatementNode[]) {
+  return new FUNCTION_DECLARATION(name, params, body);
+}
+
+/** An object representing a variable declaration statement node. */
+class VARIABLE_DECLARATION extends StatementNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.VARIABLE_DECLARATION(this);
+  }
+  toString(): string {
+    const name = this._name._lexeme;
+    const init = this._init.toString();
+    const out = `VARIABLE_DECLARATION: ${name} = ${init}\n`;
+    return out;
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.VARIABLE_DECLARATION;
+  }
+  _name: TokenObj;
+  _init: ExpressionNode;
+  constructor(name: TokenObj, init: ExpressionNode) {
+    super();
+    this._name = name;
+    this._init = init;
+  }
+}
+
+/**
+ * Returns a new variable declaration statement node.
+ */
+function varDeclaration(name: TokenObj, init: ExpressionNode) {
+  return new VARIABLE_DECLARATION(name, init);
+}
+
+class LOOP extends StatementNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.LOOP(this);
+  }
+  toString(): string {
+    const a = `LOOP:\n`;
+    const b = a + `\tCONDITION:${this._condition.toString()}\n`;
+    const c = b + `\tBODY:${this._body.toString()}\n`;
+    return c;
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.LOOP;
+  }
+  _condition: ExpressionNode;
+  _body: StatementNode;
+  constructor(condition: ExpressionNode, body: StatementNode) {
+    super();
+    this._condition = condition;
+    this._body = body;
+  }
+}
+
+function loop(condition: ExpressionNode, body: StatementNode) {
+  return new LOOP(condition, body);
+}
+
+/** Returns a new print statement node. */
+export function print(expression: ExpressionNode) {
+  return new PRINT(expression);
 }
 
 export function syntaxAnalysis(source: string) {
