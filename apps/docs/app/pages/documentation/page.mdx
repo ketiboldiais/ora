@@ -9,6 +9,7 @@ import {RUNTIME_CLASSES} from "../../components/Diagrams";
   - [Arithmetic Expressions](#arithmetic-expressions)
     - [Addition](#addition)
     - [Subtraction](#subtraction)
+    - [Multiplication](#multiplication)
   - [Block Statements](#block-statements)
   - [Conditional Logic](#conditional-logic)
     - [If-else Statements](#if-else-statements)
@@ -57,7 +58,7 @@ This section outlines the grammar and syntax of Ora.
 Like most languages, Ora supports basic arithmetic expressions.
 
 #### Addition
-Addition uses the syntax:
+Addition follows the syntax:
 
 $$
   a ~~ \texttt{+} ~~ b
@@ -72,7 +73,7 @@ where ${a}$ and ${b}$ are either numeric expressions or expressions that reduce 
 <Example>`2.8 + 1.1` reduces to `3.9`.</Example>
 
 <Example>
-Adding a floating point number to an integer results in a floating point number.
+Adding a floating point number and an integer results in a floating point number.
 
 `5.0 + 1` reduces to `6.0`.
 
@@ -80,13 +81,28 @@ Adding a floating point number to an integer results in a floating point number.
 
 
 #### Subtraction
-Subtraction uses the syntax:
+Subtraction follows the syntax:
 
 $$
   a ~~ \texttt{-} ~~ b
 $$
 
 where ${a}$ and ${b}$ are either numeric expressions or expressions that reduce to numeric expressions.
+
+<Example>`8 - 6` reduces to `2`.</Example>
+
+<Example>`7 - 10` reduces to `-3`.</Example>
+
+#### Multiplication
+Multiplication follows the syntax:
+
+$$
+  a ~~ \texttt{*} ~~ b
+$$
+
+where ${a}$ and ${b}$ are either numeric expressions or expressions that reduce to numeric expressions.
+
+<Example>`9 * 7` reduces to `63`.</Example>
 
 ### Block Statements
 A _block statement_ is a discrete and finite sequence of statements. In Ora, block statements are delimited by the `begin` and `end` keywords. 

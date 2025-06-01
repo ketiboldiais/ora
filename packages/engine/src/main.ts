@@ -2031,16 +2031,40 @@ function expression(expr: ExpressionNode) {
   return new EXPRESSION(expr)
 }
 
+/** An object representing a conditional statement node. */
 class CONDITIONAL extends StatementNode {
   accept<T>(visitor: Visitor<T>): T {
     return visitor.CONDITIONAL(this);
   }
   toString(): string {
-    throw new Error("Method not implemented.");
+    const condition = this._condition.toString();
+    const thenBranch = this._then.toString();
+    const elseBranch = this._else.toString();
+    const a = `CONDITIONAL:\n`;
+    const b = a + `\tCONDITION: ${condition}\n`;
+    const c = b + `\tTHEN: ${thenBranch}\n`;
+    const d = c + `\tELSE: ${elseBranch}\n`;
+    return d;
   }
   kind(): AST_NODE_TYPE {
     return AST_NODE_TYPE.CONDITIONAL;
   }
+  _condition: ExpressionNode;
+  _then: StatementNode;
+  _else: StatementNode;
+  constructor(condition: ExpressionNode, thenBranch: StatementNode, elseBranch: StatementNode) {
+    super();
+    this._condition = condition;
+    this._then = thenBranch;
+    this._else = elseBranch;
+  }
+}
+
+/**
+ * Returns a new conditional statement node.
+ */
+function conditional(condition: ExpressionNode, thenBranch: StatementNode, elseBranch: StatementNode) {
+  return new CONDITIONAL(condition, thenBranch, elseBranch)
 }
 
 export function syntaxAnalysis(source: string) {
