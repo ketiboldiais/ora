@@ -2281,10 +2281,6 @@ function loop(condition: ExpressionNode, body: StatementNode) {
   return new LOOP(condition, body);
 }
 
-export function syntaxAnalysis(source: string) {
-  // const state = enstate()
-}
-
 /**
  * The binding power of a given operator.
  * Values of type `bp` are used the parsers
@@ -2427,3 +2423,106 @@ type ParsletEntry<T> = [Parslet<T>, Parslet<T>, BP];
 
 /** @internal A record of parslet entries, where each key is a TOKEN. */
 type BPTable<T> = Record<TOKEN, ParsletEntry<T>>;
+
+export function syntaxAnalysis(source: string) {
+  /** Begin by initializing the state. */
+  const state = enstate<ExpressionNode, StatementNode>(
+    lit(nil()),
+    expression(lit(nil()))
+  );
+
+  /** The "blank" binding power. */
+  const ___o = BP.NIL;
+
+  /** The "blank" parslet. */
+  const ____: Parslet<ExpressionNode> = (token) => {
+    if (state._error !== null) {
+      return left(state._error);
+    } else {
+      return state.error(`Unexpected token: ${token._lexeme}`, token._line);
+    }
+  };
+
+  const rules: BPTable<ExpressionNode> = {
+    [TOKEN.EOF]: [____, ____, ___o],
+    [TOKEN.ERROR]: [____, ____, ___o],
+    [TOKEN.EMPTY]: [____, ____, ___o],
+    [TOKEN.LEFT_PAREN]: [____, ____, ___o],
+    [TOKEN.RIGHT_PAREN]: [____, ____, ___o],
+    [TOKEN.LEFT_BRACKET]: [____, ____, ___o],
+    [TOKEN.RIGHT_BRACKET]: [____, ____, ___o],
+    [TOKEN.LEFT_BRACE]: [____, ____, ___o],
+    [TOKEN.RIGHT_BRACE]: [____, ____, ___o],
+    [TOKEN.SEMICOLON]: [____, ____, ___o],
+    [TOKEN.COLON]: [____, ____, ___o],
+    [TOKEN.DOT]: [____, ____, ___o],
+    [TOKEN.COMMA]: [____, ____, ___o],
+    [TOKEN.PLUS]: [____, ____, ___o],
+    [TOKEN.MINUS]: [____, ____, ___o],
+    [TOKEN.STAR]: [____, ____, ___o],
+    [TOKEN.SLASH]: [____, ____, ___o],
+    [TOKEN.CARET]: [____, ____, ___o],
+    [TOKEN.PERCENT]: [____, ____, ___o],
+    [TOKEN.BANG]: [____, ____, ___o],
+    [TOKEN.AMPERSAND]: [____, ____, ___o],
+    [TOKEN.TILDE]: [____, ____, ___o],
+    [TOKEN.EQUAL]: [____, ____, ___o],
+    [TOKEN.LESS]: [____, ____, ___o],
+    [TOKEN.GREATER]: [____, ____, ___o],
+    [TOKEN.LESS_EQUAL]: [____, ____, ___o],
+    [TOKEN.GREATER_EQUAL]: [____, ____, ___o],
+    [TOKEN.BANG_EQUAL]: [____, ____, ___o],
+    [TOKEN.EQUAL_EQUAL]: [____, ____, ___o],
+    [TOKEN.PLUS_PLUS]: [____, ____, ___o],
+    [TOKEN.MINUS_MINUS]: [____, ____, ___o],
+    [TOKEN.DOT_PLUS]: [____, ____, ___o],
+    [TOKEN.DOT_STAR]: [____, ____, ___o],
+    [TOKEN.DOT_MINUS]: [____, ____, ___o],
+    [TOKEN.DOT_CARET]: [____, ____, ___o],
+    [TOKEN.AT]: [____, ____, ___o],
+    [TOKEN.POUND]: [____, ____, ___o],
+    [TOKEN.STAR_PLUS]: [____, ____, ___o],
+    [TOKEN.STAR_MINUS]: [____, ____, ___o],
+    [TOKEN.STAR_STAR]: [____, ____, ___o],
+    [TOKEN.INTEGER]: [____, ____, ___o],
+    [TOKEN.BIG_INTEGER]: [____, ____, ___o],
+    [TOKEN.FLOAT]: [____, ____, ___o],
+    [TOKEN.FRACTION]: [____, ____, ___o],
+    [TOKEN.BIG_FLOAT]: [____, ____, ___o],
+    [TOKEN.BIG_FRACTION]: [____, ____, ___o],
+    [TOKEN.SYMBOL]: [____, ____, ___o],
+    [TOKEN.STRING]: [____, ____, ___o],
+    [TOKEN.SYM_STRING]: [____, ____, ___o],
+    [TOKEN.BOOLEAN]: [____, ____, ___o],
+    [TOKEN.NAN]: [____, ____, ___o],
+    [TOKEN.INF]: [____, ____, ___o],
+    [TOKEN.NIL]: [____, ____, ___o],
+    [TOKEN.UNDEFINED]: [____, ____, ___o],
+    [TOKEN.AND]: [____, ____, ___o],
+    [TOKEN.OR]: [____, ____, ___o],
+    [TOKEN.NOT]: [____, ____, ___o],
+    [TOKEN.NAND]: [____, ____, ___o],
+    [TOKEN.XOR]: [____, ____, ___o],
+    [TOKEN.XNOR]: [____, ____, ___o],
+    [TOKEN.NOR]: [____, ____, ___o],
+    [TOKEN.IF]: [____, ____, ___o],
+    [TOKEN.ELSE]: [____, ____, ___o],
+    [TOKEN.FN]: [____, ____, ___o],
+    [TOKEN.LET]: [____, ____, ___o],
+    [TOKEN.VAR]: [____, ____, ___o],
+    [TOKEN.RETURN]: [____, ____, ___o],
+    [TOKEN.LOOP]: [____, ____, ___o],
+    [TOKEN.FOR]: [____, ____, ___o],
+    [TOKEN.CLASS]: [____, ____, ___o],
+    [TOKEN.PRINT]: [____, ____, ___o],
+    [TOKEN.SUPER]: [____, ____, ___o],
+    [TOKEN.THIS]: [____, ____, ___o],
+    [TOKEN.REM]: [____, ____, ___o],
+    [TOKEN.MOD]: [____, ____, ___o],
+    [TOKEN.DIV]: [____, ____, ___o],
+    [TOKEN.BEGIN]: [____, ____, ___o],
+    [TOKEN.END]: [____, ____, ___o],
+    [TOKEN.NUMERIC_CONSTANT]: [____, ____, ___o],
+    [TOKEN.NATIVE_FUNCTION]: [____, ____, ___o],
+  };
+}
