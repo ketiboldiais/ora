@@ -1686,6 +1686,8 @@ enum AST_NODE_TYPE {
   PROP_WRITE,
   PAREND,
   UNEX,
+  BRANCH,
+  TERNARY,
   LIT,
   BLOCK,
   EXPRESSION,
@@ -1704,6 +1706,8 @@ interface Visitor<T> {
   propWrite(node: PropWrite): T;
   parend(node: Parend): T;
   unex(node: Unex): T;
+  branch(node: Branch): T;
+  ternary(node: Ternary): T;
   lit(node: Lit): T;
   BLOCK(node: BLOCK): T;
   EXPRESSION(node: EXPRESSION): T;
@@ -1939,17 +1943,17 @@ class Unex extends ExpressionNode {
    * A flag indicating whether this unary
    * expression is a unary prefix or unary postfix
    * expression.
-   * 
+   *
    * `0` = unary prefix.
-   *  
-   * `1` = unary postfix. 
+   *
+   * `1` = unary postfix.
    */
-  _fix: 0|1;
+  _fix: 0 | 1;
   /** This unary expression's operator. */
   _op: TokenObj;
   /** This unary expression's argument. */
   _arg: ExpressionNode;
-  constructor(operator: TokenObj, arg: ExpressionNode, fix: 0|1) {
+  constructor(operator: TokenObj, arg: ExpressionNode, fix: 0 | 1) {
     super();
     this._op = operator;
     this._arg = arg;
@@ -1967,6 +1971,72 @@ function unaryPostfix(op: TokenObj, arg: ExpressionNode) {
   return new Unex(op, arg, 1);
 }
 
+/** An object representing a branch expression node. */
+class Branch extends ExpressionNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.branch(this);
+  }
+  toString(): string {
+    const pairings = this._mappings
+      .map(([a, b]) => {
+        const condition = a.toString();
+        const result = b.toString();
+        return `${condition} -> ${result}`;
+      })
+      .join(",");
+    return `branch(${pairings})`;
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.BRANCH;
+  }
+  _mappings: [ExpressionNode, ExpressionNode][];
+  constructor(mappings: [ExpressionNode, ExpressionNode][]) {
+    super();
+    this._mappings = mappings;
+  }
+}
+
+/** Returns a new branch expression node. */
+function branch(mappings: [ExpressionNode, ExpressionNode][]) {
+  return new Branch(mappings);
+}
+
+/** An object representing a ternary expression node. */
+class Ternary extends ExpressionNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.ternary(this);
+  }
+  toString(): string {
+    throw new Error("Method not implemented.");
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.TERNARY;
+  }
+  _condition: ExpressionNode;
+  _then: ExpressionNode;
+  _else: ExpressionNode;
+  constructor(
+    condition: ExpressionNode,
+    _then: ExpressionNode,
+    _else: ExpressionNode
+  ) {
+    super();
+    this._condition = condition;
+    this._then = _then;
+    this._else = _else;
+  }
+}
+
+/** Returns a new ternary expression node. */
+function ternary(
+  condition: ExpressionNode,
+  then: ExpressionNode,
+  _else: ExpressionNode
+) {
+  return new Ternary(condition, then, _else);
+}
+
+/** An object representing a literal expression node. */
 class Lit extends ExpressionNode {
   accept<T>(visitor: Visitor<T>): T {
     return visitor.lit(this);
@@ -1984,6 +2054,11 @@ class Lit extends ExpressionNode {
   }
 }
 
+/** Returns a new literal expression node. */
+function lit(value: Expression) {
+  return new Lit(value);
+}
+
 // § Statements
 // The following classes relate to AST nodes corresponding
 // to statements.
@@ -1997,8 +2072,8 @@ class BLOCK extends StatementNode {
     return visitor.BLOCK(this);
   }
   toString(): string {
-    const statements = this._statements.map(s => s.toString());
-    return `BLOCK: ${statements.join('\n')}\n`
+    const statements = this._statements.map((s) => s.toString());
+    return `BLOCK: ${statements.join("\n")}\n`;
   }
   kind(): AST_NODE_TYPE {
     return AST_NODE_TYPE.BLOCK;
@@ -2036,7 +2111,7 @@ class EXPRESSION extends StatementNode {
 
 /** Returns a new Expression statement node. */
 function expression(expr: ExpressionNode) {
-  return new EXPRESSION(expr)
+  return new EXPRESSION(expr);
 }
 
 /** An object representing a conditional statement node. */
@@ -2060,7 +2135,11 @@ class CONDITIONAL extends StatementNode {
   _condition: ExpressionNode;
   _then: StatementNode;
   _else: StatementNode;
-  constructor(condition: ExpressionNode, thenBranch: StatementNode, elseBranch: StatementNode) {
+  constructor(
+    condition: ExpressionNode,
+    thenBranch: StatementNode,
+    elseBranch: StatementNode
+  ) {
     super();
     this._condition = condition;
     this._then = thenBranch;
@@ -2071,8 +2150,12 @@ class CONDITIONAL extends StatementNode {
 /**
  * Returns a new conditional statement node.
  */
-function conditional(condition: ExpressionNode, thenBranch: StatementNode, elseBranch: StatementNode) {
-  return new CONDITIONAL(condition, thenBranch, elseBranch)
+function conditional(
+  condition: ExpressionNode,
+  thenBranch: StatementNode,
+  elseBranch: StatementNode
+) {
+  return new CONDITIONAL(condition, thenBranch, elseBranch);
 }
 
 /** An object representing a print statement. */
@@ -2086,12 +2169,17 @@ class PRINT extends StatementNode {
   kind(): AST_NODE_TYPE {
     return AST_NODE_TYPE.PRINT;
   }
-  
+
   _expression: ExpressionNode;
   constructor(expression: ExpressionNode) {
     super();
     this._expression = expression;
   }
+}
+
+/** Returns a new print statement node. */
+export function print(expression: ExpressionNode) {
+  return new PRINT(expression);
 }
 
 /**
@@ -2105,8 +2193,9 @@ class FUNCTION_DECLARATION extends StatementNode {
   toString(): string {
     const a = `FUNCTION_DECLARATION:\n`;
     const b = a + `\tNAME: ${this._name._lexeme}\n`;
-    const c = b + `\tPARAMS: (${this._params.map(t => t._lexeme).join(',')})\n`;
-    const d = c + `\tBODY: ${this._body.map(s => s.toString()).join('\n')}`;
+    const c =
+      b + `\tPARAMS: (${this._params.map((t) => t._lexeme).join(",")})\n`;
+    const d = c + `\tBODY: ${this._body.map((s) => s.toString()).join("\n")}`;
     return d;
   }
   kind(): AST_NODE_TYPE {
@@ -2126,7 +2215,11 @@ class FUNCTION_DECLARATION extends StatementNode {
 /**
  * Returns a new function declaration statement node.
  */
-function functionDeclaration(name: TokenObj, params: TokenObj[], body: StatementNode[]) {
+function functionDeclaration(
+  name: TokenObj,
+  params: TokenObj[],
+  body: StatementNode[]
+) {
   return new FUNCTION_DECLARATION(name, params, body);
 }
 
@@ -2186,11 +2279,6 @@ class LOOP extends StatementNode {
 /** Returns a new loop statement node. */
 function loop(condition: ExpressionNode, body: StatementNode) {
   return new LOOP(condition, body);
-}
-
-/** Returns a new print statement node. */
-export function print(expression: ExpressionNode) {
-  return new PRINT(expression);
 }
 
 export function syntaxAnalysis(source: string) {
