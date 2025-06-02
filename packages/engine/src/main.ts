@@ -2443,6 +2443,13 @@ export function syntaxAnalysis(source: string) {
     }
   };
 
+  /**
+   * The rules table comprises mappings from every
+   * token type to a triple `(Prefix, Infix, B)`,
+   * where `Prefix` and `Infix` are parslets (small
+   * parsers that handle a single grammar rule), and `B` is a
+   * binding power.
+   */
   const rules: BPTable<ExpressionNode> = {
     [TOKEN.EOF]: [____, ____, ___o],
     [TOKEN.ERROR]: [____, ____, ___o],
