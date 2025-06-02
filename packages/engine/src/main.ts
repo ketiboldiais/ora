@@ -2094,6 +2094,10 @@ class PRINT extends StatementNode {
   }
 }
 
+/**
+ * An object representing a function declaration
+ * statement node.
+ */
 class FUNCTION_DECLARATION extends StatementNode {
   accept<T>(visitor: Visitor<T>): T {
     return visitor.FUNCTION_DECLARATION(this);
@@ -2119,6 +2123,9 @@ class FUNCTION_DECLARATION extends StatementNode {
   }
 }
 
+/**
+ * Returns a new function declaration statement node.
+ */
 function functionDeclaration(name: TokenObj, params: TokenObj[], body: StatementNode[]) {
   return new FUNCTION_DECLARATION(name, params, body);
 }
@@ -2153,6 +2160,7 @@ function varDeclaration(name: TokenObj, init: ExpressionNode) {
   return new VARIABLE_DECLARATION(name, init);
 }
 
+/** An object representing a loop statement node. */
 class LOOP extends StatementNode {
   accept<T>(visitor: Visitor<T>): T {
     return visitor.LOOP(this);
@@ -2175,6 +2183,7 @@ class LOOP extends StatementNode {
   }
 }
 
+/** Returns a new loop statement node. */
 function loop(condition: ExpressionNode, body: StatementNode) {
   return new LOOP(condition, body);
 }
