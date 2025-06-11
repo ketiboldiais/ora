@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Either, left, right } from "./utils_fp";
 import {
   isDigit,
@@ -15,12 +16,12 @@ export enum EXPR {
   INTEGER,
   BIG_INTEGER,
   FLOAT,
-  BIG_FLOAT,
+  // BIG_FLOAT,
   FRACTION,
   BIG_FRACTION,
   COMPLEX,
   NIL,
-  SYM,
+  SYMBOL,
   BOOL,
   NUMERIC_CONSTANT,
   STRING,
@@ -36,36 +37,193 @@ export enum EXPR {
   QUOTIENT,
   POWER,
   FUNC,
+  CORE_FN,
 }
 
 /** An object corresponding to an Expression. */
 abstract class Expression {
   abstract kind(): EXPR;
   abstract toString(): string;
+  abstract sexpr(): $EXPRESSION;
+  abstract isAtomic(): this is Atomic;
+  abstract isCompound(): this is Compound;
+  abstract equals(other: Expression): boolean;
 }
 
-abstract class Atomic extends Expression {}
-abstract class Compound extends Expression {}
+abstract class Atomic extends Expression {
+  isAtomic(): this is Atomic {
+    return true;
+  }
+  isCompound(): this is Compound {
+    return false;
+  }
+}
+
+abstract class Compound extends Expression {
+  isAtomic(): this is Atomic {
+    return true;
+  }
+  isCompound(): this is Compound {
+    return false;
+  }
+  equals(other: Expression): boolean {
+    return (
+      other.isCompound() &&
+      other._op === this._op &&
+      this._args.length === other._args.length &&
+      this._args.reduce(
+        (prev, curr, i) => prev && curr.equals(other._args[i] ?? nil()),
+        true
+      )
+    );
+  }
+  _op: string;
+  _args: Expression[];
+  constructor(op: string, args: Expression[]) {
+    super();
+    this._op = op;
+    this._args = args;
+  }
+}
 
 abstract class Numeric extends Atomic {}
 
 abstract class Real extends Numeric {
   abstract sign(): -1 | 0 | 1;
+  abstract toExponential(): string;
+  // abstract get _exponent(): number;
+}
+
+type $EXPRESSION =
+  | $INTEGER
+  | $BIG_INTEGER
+  | $FLOAT
+  // | $BIG_FLOAT
+  | $FRACTION
+  | $BIG_FRACTION
+  | $COMPLEX
+  | $SYMBOL
+  | $NUMERIC_CONSTANT
+  | $INF
+  | $NAN
+  | $UNDEFINED
+  | $BOOL
+  | $STRING
+  | $SYMSTRING
+  | $NIL
+  | $RELATION
+  | $EQUATION
+  | $SUM
+  | $DIFFERENCE
+  | $PRODUCT
+  | $QUOTIENT
+  | $POWER
+  | $FUNC;
+
+type $INTEGER = ["INTEGER", number];
+type $BIG_INTEGER = ["BIG_INTEGER", bigint];
+type $FLOAT = ["FLOAT", number];
+// type $BIG_FLOAT = ["BIG_FLOAT", string];
+type $FRACTION = ["FRACTION", string];
+type $BIG_FRACTION = ["BIG_FRACTION", string];
+type $COMPLEX = ["COMPLEX", string];
+type $SYMBOL = ["SYMBOL", string];
+type $NUMERIC_CONSTANT = ["NUMERIC_CONSTANT", [string, number]];
+type $INF = ["INF", `${"+" | "-"}inf`];
+type $UNDEFINED = ["UNDEFINED", "undefined"];
+type $BOOL = ["BOOL", boolean];
+type $NAN = ["NAN", "nan"];
+type $STRING = ["STRING", string];
+type $SYMSTRING = ["SYMSTRING", string];
+type $NIL = ["NIL", "nil"];
+type $RELATION = [RelationOperator, $EXPRESSION[]];
+type $EQUATION = ["==", [$EXPRESSION, $EXPRESSION]];
+type $SUM = ["+", $EXPRESSION[]];
+type $DIFFERENCE = ["-", $EXPRESSION[]];
+type $PRODUCT = ["*", $EXPRESSION[]];
+type $QUOTIENT = ["/", $EXPRESSION[]];
+type $POWER = ["^", $EXPRESSION[]];
+type $FUNC = [`𝑓`, string, $EXPRESSION[]];
+
+export function sexprString(expression: $EXPRESSION): string {
+  const type = expression[0];
+  switch (type) {
+    case "INTEGER":
+      return `(int ${expression[1]})`;
+    case "BIG_INTEGER":
+      return `(big_integer ${expression[1]})`;
+    case "FLOAT":
+      return `(float ${expression[1]})`;
+    // case "BIG_FLOAT":
+    //   return `(big_float ${expression[1]})`;
+    case "FRACTION":
+      return `(fraction ${expression[1]})`;
+    case "BIG_FRACTION":
+      return `(big_fraction ${expression[1]})`;
+    case "COMPLEX":
+      return `(complex ${expression[1]})`;
+    case "SYMBOL":
+      return `(symbol ${expression[1]})`;
+    case "NUMERIC_CONSTANT":
+      return `(numeric_constant ${expression[1][0]} ${expression[1][1]})`;
+    case "INF":
+      return `${expression[1]}`;
+    case "UNDEFINED":
+      return `undefined`;
+    case "BOOL":
+      return `(bool ${expression[1]})`;
+    case "NAN":
+      return `nan`;
+    case "STRING":
+      return `(string "${expression[1]}")`;
+    case "SYMSTRING":
+      return `(symstring '${expression[1]}')`;
+    case "NIL":
+      return `nil`;
+    case "+":
+      return `(+ ${expression[1].map((x) => sexprString(x)).join(" ")})`;
+    case "-":
+      return `(- ${expression[1].map((x) => sexprString(x)).join(" ")})`;
+    case "*":
+      return `(* ${expression[1].map((x) => sexprString(x)).join(" ")})`;
+    case "/":
+      return `(/ ${expression[1].map((x) => sexprString(x)).join(" ")})`;
+    case "^":
+      return `(^ ${expression[1].map((x) => sexprString(x)).join(" ")})`;
+    case "𝑓":
+      return `(𝑓 ${expression[1]} ${expression[2].map((x) => sexprString(x)).join(" ")})`;
+    default:
+      return `(${expression[0]} ${expression[1].map((x) => sexprString(x)).join(" ")})`;
+  }
 }
 
 /** An object corresponding to an Integer. */
 class Integer extends Real {
   /** The value of this integer. */
   _value: number;
+
+  toExponential(): string {
+    return `${this._value}E+0`;
+  }
+
   sign(): -1 | 0 | 1 {
     return this._value < 0 ? -1 : this._value > 0 ? 1 : 0;
   }
+
   kind(): EXPR {
     return EXPR.INTEGER;
   }
 
   toString(): string {
     return `${this._value}`;
+  }
+
+  sexpr(): $EXPRESSION {
+    return ["INTEGER", this._value];
+  }
+
+  equals(other: Expression): boolean {
+    return isInt(other) && this._value === other._value;
   }
 
   constructor(value: number) {
@@ -84,7 +242,7 @@ export function int(value: number) {
  * the given expression `expr` is
  * an Integer.
  */
-export function isInt(expr: Expression): expr is Integer {
+export function isInt(expr: any): expr is Integer {
   return !isUnsafe(expr) && expr.kind() === EXPR.INTEGER;
 }
 
@@ -93,12 +251,51 @@ export class BigInteger extends Real {
   kind(): EXPR {
     return EXPR.BIG_INTEGER;
   }
+
+  toExponential(): string {
+    let value = this._value;
+    if (typeof value !== "bigint")
+      throw new Error(
+        "Argument must be a bigint, but a " + typeof value + " was supplied."
+      );
+
+    //
+
+    const isNegative = value < 0;
+    if (isNegative) value = -value; // Using the absolute value for the digits.
+
+    const str = value.toString();
+
+    const exp = str.length - 1;
+    if (exp == 0) return (isNegative ? "-" : "") + str + "E+0";
+
+    const mantissaDigits = str.replace(/(0+)$/, ""); // Remove any mathematically insignificant zeroes.
+
+    // Use the single first digit for the integral part of the mantissa, and all following digits for the fractional part (if any).
+    let mantissa = mantissaDigits.charAt(0);
+    if (mantissaDigits.length > 1) {
+      mantissa += "." + mantissaDigits.substring(1);
+    }
+
+    return (isNegative ? "-" : "") + mantissa + "E+" + exp.toString();
+  }
+
   sign(): -1 | 0 | 1 {
     return this._value < 0 ? -1 : this._value > 0 ? 1 : 0;
   }
+
   toString(): string {
     return `${this._value}`;
   }
+
+  sexpr(): $EXPRESSION {
+    return ["BIG_INTEGER", this._value];
+  }
+
+  equals(other: Expression): boolean {
+    return isBigInt(other) && other._value === this._value;
+  }
+
   /** The value of this big integer. */
   _value: bigint;
   constructor(value: bigint) {
@@ -125,12 +322,28 @@ export class Float extends Real {
   kind(): EXPR {
     return EXPR.FLOAT;
   }
+  toExponential(): string {
+    const v = this._value.toExponential().replace('e', 'E');
+    return v;
+    
+  }
+
   sign(): -1 | 0 | 1 {
     return this._value < 0 ? -1 : this._value > 0 ? 1 : 0;
   }
+
   toString(): string {
     return `${this._value}`;
   }
+
+  sexpr(): $EXPRESSION {
+    return ["FLOAT", this._value];
+  }
+
+  equals(other: Expression): boolean {
+    return isFloat(other) && other._value === this._value;
+  }
+
   /** The value of this real number. */
   _value: number;
   constructor(value: number) {
@@ -149,52 +362,83 @@ export function isFloat(x: Expression): x is Float {
 }
 
 /** Returns a new Big Real number. */
-export class BigFloat extends Real {
-  kind(): EXPR {
-    return EXPR.BIG_FLOAT;
-  }
-  sign(): -1 | 0 | 1 {
-    return this._m < 0 ? -1 : this._m > 0 ? 1 : 0;
-  }
-  toString(): string {
-    const m = `${this._m}`;
-    const n = `${this._n}`;
-    return `${m}E${this._n < 0 ? "-" : "+"}${n}`;
-  }
-  /** This big real's significand. */
-  _m: number;
-  /** This big real's exponent. This must be an integer. */
-  _n: number = 0;
-  constructor(m: number, n: number) {
-    super();
-    this._m = m;
-    this._n = Math.floor(n);
-  }
-}
+// export class BigFloat extends Real {
+//   kind(): EXPR {
+//     return EXPR.BIG_FLOAT;
+//   }
 
-/** Returns a new big real number. */
-export function bigfloat(m: number, n: number = 0) {
-  return new BigFloat(m, n);
-}
+//   sign(): -1 | 0 | 1 {
+//     return this._m < 0 ? -1 : this._m > 0 ? 1 : 0;
+//   }
 
-export function isBigFloat(x: Expression): x is BigFloat {
-  return !isUnsafe(x) && x.kind() === EXPR.BIG_FLOAT;
-}
+//   toExponential(): string {
+//     return this.toString();
+//   }
+
+//   toString(): string {
+//     const m = `${this._m}`;
+//     const n = `${this._n}`;
+//     return `${m}E${this._n < 0 ? "" : "+"}${n}`;
+//   }
+
+//   sexpr(): $EXPRESSION {
+//     return ["BIG_FLOAT", this.toString()];
+//   }
+
+//   equals(other: Expression): boolean {
+//     return isBigFloat(other) && this._m === other._m && this._n === other._n;
+//   }
+
+//   /** This big real's significand. */
+//   _m: number;
+//   /** This big real's exponent. This must be an integer. */
+//   _n: number = 0;
+//   constructor(m: number, n: number) {
+//     super();
+//     this._m = m;
+//     this._n = Math.floor(n);
+//   }
+// }
+
+// /** Returns a new big real number. */
+// export function bigfloat(m: number, n: number = 0) {
+//   return new BigFloat(m, n);
+// }
+
+// export function isBigFloat(x: Expression): x is BigFloat {
+//   return !isUnsafe(x) && x.kind() === EXPR.BIG_FLOAT;
+// }
 
 /** An object corresponding to a Fraction. */
 export class Fraction extends Real {
   kind(): EXPR {
     return EXPR.FRACTION;
   }
+
   sign(): -1 | 0 | 1 {
     return this._value < 0 ? -1 : this._value > 0 ? 1 : 0;
   }
+
   toString(): string {
     return `${this._n.toString()}|${this._d.toString()}`;
   }
+
+  toExponential(): string {
+    return float(this._value).toExponential();
+  }
+
+  sexpr(): $EXPRESSION {
+    return ["FRACTION", this.toString()];
+  }
+
+  equals(other: Expression): boolean {
+    return isFrac(other) && this._n === other._n && this._d === other._d;
+  }
+
   get _value() {
     return this._n._value / this._d._value;
   }
+
   /** This fraction's numerator. */
   _n: Integer;
   /** This fraction's denominator. */
@@ -230,15 +474,31 @@ export class BigFraction extends Real {
   kind(): EXPR {
     return EXPR.BIG_FRACTION;
   }
+
   sign(): -1 | 0 | 1 {
     return this._value < 0 ? -1 : this._value > 0 ? 1 : 0;
   }
+
   toString(): string {
     return `${this._n}|${this._d}`;
   }
+
+  sexpr(): $EXPRESSION {
+    return ["BIG_FRACTION", this.toString()];
+  }
+
+  equals(other: Expression): boolean {
+    return isBigFrac(other) && other._n === this._n && other._d === this._d;
+  }
+
+  toExponential(): string {
+    throw new Error(`BigFraction.toExponential not implemented`)
+  }
+
   get _value() {
     return this._n / this._d;
   }
+
   _n: bigint;
   _d: bigint;
   constructor(n: bigint, d: bigint) {
@@ -267,6 +527,12 @@ export class Complex extends Numeric {
   toString(): string {
     return `${this._re} ${this._im.sign() < 0 ? "-" : "+"} ${this._im}i`;
   }
+  sexpr(): $EXPRESSION {
+    return ["COMPLEX", this.toString()];
+  }
+  equals(other: Expression): boolean {
+    return isComplex(other) && other._re === this._re && other._im === this._im;
+  }
   _re: Real;
   _im: Real;
   constructor(re: Real, im: Real) {
@@ -283,16 +549,26 @@ export function complex(re: Real, im: Real) {
   return new Complex(re, im);
 }
 
+export function isComplex(u: any): u is Complex {
+  return !isUnsafe(u) && u.kind() === EXPR.COMPLEX;
+}
+
 /**
  * An object representing a symbol.
  */
 export class Sym extends Atomic {
   _sym: string;
   kind() {
-    return EXPR.SYM;
+    return EXPR.SYMBOL;
   }
   toString(): string {
     return this._sym;
+  }
+  sexpr(): $EXPRESSION {
+    return ["SYMBOL", this._sym];
+  }
+  equals(other: Expression): boolean {
+    return isSym(other) && other._sym === this._sym;
   }
   constructor(sym: string) {
     super();
@@ -308,6 +584,13 @@ export function sym(symbol: string) {
 }
 
 /**
+ * Returns true if the given expression `u` is a Sym.
+ */
+export function isSym(u: any): u is Sym {
+  return u instanceof Sym;
+}
+
+/**
  * An object representing a numeric constant.
  */
 export class NumConst extends Atomic {
@@ -318,6 +601,16 @@ export class NumConst extends Atomic {
   }
   toString(): string {
     return this._sym;
+  }
+  sexpr(): $EXPRESSION {
+    return ["NUMERIC_CONSTANT", [this._sym, this._value]];
+  }
+  equals(other: Expression): boolean {
+    return (
+      isNumConst(other) &&
+      other._sym === this._sym &&
+      other._value === this._value
+    );
   }
   constructor(sym: string, value: number) {
     super();
@@ -333,6 +626,11 @@ export function numConst(symbol: string, value: number) {
   return new NumConst(symbol, value);
 }
 
+/** Returns true if `u` is a `NumConst` expression. */
+export function isNumConst(u: any): u is NumConst {
+  return u instanceof NumConst;
+}
+
 /**
  * An object representing Infinity.
  */
@@ -343,6 +641,12 @@ export class Inf extends Atomic {
   _sign: "+" | "-";
   toString(): string {
     return this._sign + "inf";
+  }
+  sexpr(): $EXPRESSION {
+    return ["INF", this.toString()] as $INF;
+  }
+  equals(other: Expression): boolean {
+    return isInf(other) && other._sign === this._sign;
   }
   constructor(sign: "+" | "-") {
     super();
@@ -355,6 +659,11 @@ export function inf(sign: "+" | "-") {
   return new Inf(sign);
 }
 
+/** Returns true if `u` is an `Inf` expression. */
+export function isInf(u: any) {
+  return u instanceof Inf;
+}
+
 /** An object corresponding to nan (not a number). */
 export class NAN extends Atomic {
   kind(): EXPR {
@@ -363,14 +672,26 @@ export class NAN extends Atomic {
   toString(): string {
     return "nan";
   }
+  sexpr(): $EXPRESSION {
+    return ["NAN", "nan"];
+  }
+  equals(other: Expression): boolean {
+    return isNAN(other);
+  }
   _value: number = NaN;
   constructor() {
     super();
   }
 }
 
+/** Returns a new `NAN` expression. */
 export function nan() {
   return new NAN();
+}
+
+/** Returns true if `u` is a `NAN` expression. */
+export function isNAN(u: any): u is NAN {
+  return u instanceof NAN;
 }
 
 /** An object representing the global symbol "undefined". */
@@ -381,13 +702,29 @@ export class Undefined extends Atomic {
   toString(): string {
     return this._value;
   }
+  sexpr(): $EXPRESSION {
+    return ["UNDEFINED", "undefined"];
+  }
+  equals(other: Expression): boolean {
+    return isUndefined(other);
+  }
   _value = "undefined" as const;
   constructor() {
     super();
   }
 }
 
-export const UNDEFINED = () => new Undefined();
+export function UNDEFINED() {
+  return new Undefined();
+}
+
+/**
+ * Returns true if the given expression
+ * `u` is the global expression `Undefined`.
+ */
+export function isUndefined(u: any): u is Undefined {
+  return u instanceof Undefined;
+}
 
 /*
  * An object representing a Boolean value.
@@ -399,6 +736,12 @@ export class Bool extends Atomic {
   }
   toString(): string {
     return `${this._value}`;
+  }
+  sexpr(): $EXPRESSION {
+    return ["BOOL", this._value];
+  }
+  equals(other: Expression): boolean {
+    return isBool(other) && other._value === this._value;
   }
   constructor(value: boolean) {
     super();
@@ -414,6 +757,14 @@ export function bool(value: boolean) {
 }
 
 /**
+ * Returns true if the given expression
+ * `u` is a Boolean expression.
+ */
+export function isBool(u: any): u is Bool {
+  return u instanceof Bool;
+}
+
+/**
  * An object representing a string.
  */
 export class Str extends Atomic {
@@ -421,35 +772,67 @@ export class Str extends Atomic {
     return EXPR.STRING;
   }
   toString(): string {
-    return this._string;
+    return this._value;
   }
-  _string: string;
+  sexpr(): $EXPRESSION {
+    return ["STRING", this._value];
+  }
+  equals(other: Expression): boolean {
+    return isStr(other) && other._value === this._value;
+  }
+  _value: string;
   constructor(str: string) {
     super();
-    this._string = str;
+    this._value = str;
   }
 }
 
-export function str(string: string) {
+/** Returns a new string expression. */
+export function str(string: string): Str {
   return new Str(string);
 }
 
-export class SymString extends Atomic {
+/**
+ * Returns `true` if the given expression
+ * `u` is a Str (string) expression.
+ */
+export function isStr(u: any): u is Str {
+  return u instanceof Str;
+}
+
+export class SymStr extends Atomic {
   kind(): EXPR {
     return EXPR.SYMSTRING;
   }
   toString(): string {
-    return this._string;
+    return this._value;
   }
-  _string: string;
+  sexpr(): $EXPRESSION {
+    return ["SYMSTRING", this._value];
+  }
+  equals(other: Expression): boolean {
+    return isSymStr(other) && other._value === this._value;
+  }
+  _value: string;
   constructor(string: string) {
     super();
-    this._string = string;
+    this._value = string;
   }
 }
 
-export function symstring(string: string) {
-  return new SymString(string);
+/**
+ * Returns a new SymStr (Symbolic String) expression.
+ */
+export function symstring(string: string): SymStr {
+  return new SymStr(string);
+}
+
+/**
+ * Returns `true` if `u` is a SymStr (Symbolic String)
+ * expression.
+ */
+export function isSymStr(u: any): u is SymStr {
+  return u instanceof SymStr;
 }
 
 /**
@@ -461,6 +844,13 @@ export class Nil extends Atomic {
   }
   toString(): string {
     return "nil";
+  }
+  sexpr(): $EXPRESSION {
+    return ["NIL", "nil"];
+  }
+  _value = "nil" as const;
+  equals(other: Expression): boolean {
+    return isNil(other);
   }
   constructor() {
     super();
@@ -475,13 +865,16 @@ export function nil() {
 }
 
 /**
- * The operators recognized as relation operators
- * in symbolic strings. Note that the `=` sign in
- * a symbolic string is seen as a relation operator
- * rather than assignment, since assignment is handled
- * by the Praxis interpreter.
+ * Returns true if `u` is a Nil expression.
  */
-type RelationOperator = "=" | "<" | ">" | "<=" | ">=" | "!=";
+export function isNil(u: any): u is Nil {
+  return u instanceof Nil;
+}
+
+/**
+ * The operators recognized as relation operators.
+ */
+type RelationOperator = "=" | "<" | ">" | "<=" | ">=" | "!=" | "~";
 
 /** An object representing a relation. */
 export class Relation extends Compound {
@@ -492,10 +885,13 @@ export class Relation extends Compound {
     const result = this._args.map((y) => y.toString()).join(this._op);
     return result;
   }
+  sexpr(): $EXPRESSION {
+    return [this._op, this._args.map((arg) => arg.sexpr())];
+  }
   _op: RelationOperator;
   _args: Expression[];
   constructor(op: RelationOperator, args: Expression[]) {
-    super();
+    super(op, args);
     this._op = op;
     this._args = args;
   }
@@ -516,7 +912,10 @@ export class Equation extends Compound {
   toString(): string {
     const left = this._left.toString();
     const right = this._right.toString();
-    return `${left} == ${right}`;
+    return `${left} = ${right}`;
+  }
+  sexpr(): $EXPRESSION {
+    return ["=", [this._left.sexpr(), this._right.sexpr()]];
   }
   get _left() {
     return this._args[0];
@@ -526,7 +925,7 @@ export class Equation extends Compound {
   }
   _args: [Expression, Expression];
   constructor(left: Expression, right: Expression) {
-    super();
+    super("=", [left, right]);
     this._args = [left, right];
   }
 }
@@ -549,9 +948,12 @@ export class Sum extends Compound {
     const result = this._args.map((x) => x.toString()).join("+");
     return result;
   }
+  sexpr(): $EXPRESSION {
+    return ["+", this._args.map((x) => x.sexpr())];
+  }
   _args: Expression[];
   constructor(args: Expression[]) {
-    super();
+    super("+", args);
     this._args = args;
   }
 }
@@ -574,9 +976,12 @@ export class Difference extends Compound {
     const result = this._args.map((x) => x.toString()).join("-");
     return result;
   }
-  _args: EXPR[];
-  constructor(args: EXPR[]) {
-    super();
+  sexpr(): $EXPRESSION {
+    return ["-", this._args.map((x) => x.sexpr())];
+  }
+  _args: Expression[];
+  constructor(args: Expression[]) {
+    super("-", args);
     this._args = args;
   }
 }
@@ -584,7 +989,7 @@ export class Difference extends Compound {
 /**
  * Returns a new Difference expression.
  */
-export function diff(...args: EXPR[]) {
+export function diff(...args: Expression[]) {
   return new Difference(args);
 }
 
@@ -599,9 +1004,12 @@ export class Product extends Compound {
     const result = this._args.map((x) => x.toString()).join("*");
     return result;
   }
+  sexpr(): $EXPRESSION {
+    return ["*", this._args.map((x) => x.sexpr())];
+  }
   _args: Expression[];
   constructor(args: Expression[]) {
-    super();
+    super("*", args);
     this._args = args;
   }
 }
@@ -622,9 +1030,12 @@ export class Quotient extends Compound {
     const result = this._args.map((x) => x.toString()).join("/");
     return result;
   }
+  sexpr(): $EXPRESSION {
+    return ["/", this._args.map((x) => x.sexpr())];
+  }
   _args: Expression[];
   constructor(args: Expression[]) {
-    super();
+    super("/", args);
     this._args = args;
   }
 }
@@ -645,9 +1056,12 @@ export class Power extends Compound {
     const result = this._args.map((x) => x.toString()).join("^");
     return result;
   }
+  sexpr(): $EXPRESSION {
+    return ["^", this._args.map((x) => x.sexpr())];
+  }
   _args: Expression[];
   constructor(base: Expression, exponent: Expression) {
-    super();
+    super("^", [base, exponent]);
     this._args = [base, exponent];
   }
 }
@@ -669,10 +1083,13 @@ export class Func extends Compound {
     const result = `${this._op}(${args})`;
     return result;
   }
+  sexpr(): $EXPRESSION {
+    return ["𝑓", this._op, this._args.map((x) => x.sexpr())];
+  }
   _op: string;
   _args: Expression[];
   constructor(op: string, args: Expression[]) {
-    super();
+    super(op, args);
     this._op = op;
     this._args = args;
   }
@@ -681,6 +1098,33 @@ export class Func extends Compound {
 /** Returns a new function expression. */
 export function func(op: string, args: Expression[]) {
   return new Func(op, args);
+}
+
+type CORE_FUNCTION_NAME = "%" | "div" | "rem";
+
+/** An expression corresponding to a core function. */
+export class CoreFn extends Compound {
+  kind(): EXPR {
+    return EXPR.CORE_FN;
+  }
+  toString(): string {
+    return `${this._op}(${this._args.map((x) => x.toString()).join(",")})`;
+  }
+  sexpr(): $EXPRESSION {
+    return ["𝑓", this._op, this._args.map((x) => x.sexpr())];
+  }
+  _op: CORE_FUNCTION_NAME;
+  _args: Expression[];
+  constructor(op: CORE_FUNCTION_NAME, args: Expression[]) {
+    super(op, args);
+    this._op = op;
+    this._args = args;
+  }
+}
+
+/** Returns a new core function object. */
+function corefn(op: CORE_FUNCTION_NAME, args: Expression[]) {
+  return new CoreFn(op, args);
 }
 
 /**
@@ -735,6 +1179,9 @@ export enum TOKEN {
   // These are a subset of the single-character
   // delimiters. They are associated with certain
   // operations.
+
+  /** A token corresponding to `:=` (assigment) */
+  COLON_EQUAL,
 
   /** A token corresponding to `+` */
   PLUS,
@@ -814,7 +1261,7 @@ export enum TOKEN {
    * A token corresponding to a big floating point number
    * (a number written in scientific notation).
    */
-  BIG_FLOAT,
+  // BIG_FLOAT,
   /** A token corresponding to a big fraction. */
   BIG_FRACTION,
   /** A token corresponding to a symbol. */
@@ -875,8 +1322,6 @@ export enum TOKEN {
   THIS,
   /** A token corresponding to the keyword "rem". */
   REM,
-  /** A token corresponding to the keyword "mod". */
-  MOD,
   /** A token corresponding to the keyword "div". */
   DIV,
   /** A token corresponding to the keyword "begin". */
@@ -914,7 +1359,6 @@ type Keyword =
   | "super"
   | "this"
   | "rem"
-  | "mod"
   | "div"
   | "begin"
   | "end"
@@ -926,7 +1370,7 @@ type NumberTokenType =
   | TOKEN.BIG_INTEGER
   | TOKEN.FLOAT
   | TOKEN.FRACTION
-  | TOKEN.BIG_FLOAT;
+  // | TOKEN.BIG_FLOAT;
 
 /**
  * Represents a token.
@@ -939,7 +1383,7 @@ export class TokenObj {
   _line: number;
 
   /** The literal corresponding to this token's lexeme. */
-  _literal: Expression | null = null;
+  _literal: Expression = nil();
 
   /** This token's corresponding token. */
   _token: TOKEN;
@@ -1068,7 +1512,7 @@ type NativeConstants =
   | "log2e"
   | "sqrt2";
 
-export function lexicalAnalysis(code: string) {
+export function lexical(code: string) {
   /**
    * A variable corresponding to the current
    * line the scanner's on.
@@ -1253,7 +1697,6 @@ export function lexicalAnalysis(code: string) {
     else: () => tkn(TOKEN.ELSE),
     print: () => tkn(TOKEN.PRINT),
     rem: () => tkn(TOKEN.REM),
-    mod: () => tkn(TOKEN.MOD),
     div: () => tkn(TOKEN.DIV),
     nil: () => tkn(TOKEN.NIL),
     and: () => tkn(TOKEN.AND),
@@ -1298,24 +1741,31 @@ export function lexicalAnalysis(code: string) {
       case TOKEN.INTEGER: {
         const n = Number.parseInt(numstr);
         if (n > Number.MAX_SAFE_INTEGER) {
-          return tkn(TOKEN.BIG_INTEGER).literal(bigint(BigInt(n)));
+          return tkn(TOKEN.BIG_INTEGER).literal(bigint(BigInt(numstr)));
         } else {
           return tkn(TOKEN.INTEGER).literal(int(n));
         }
       }
+      // handle scientific numbers
+      // case TOKEN.BIG_FLOAT: {
+      //   const [a, b] = numstr.split("E");
+      //   const base = Number.parseFloat(a ?? "");
+      //   const exponent = Number.parseInt(b ?? "");
+      //   return tkn(TOKEN.BIG_FLOAT).literal(bigfloat(base, exponent));
+      // }
       // handle floats
       case TOKEN.FLOAT: {
         const n = Number.parseFloat(numstr);
         // handle very big floats
-        if (n > Number.MAX_VALUE) {
-          const exponential = n.toExponential();
-          const [M, N] = exponential.split("e");
-          const mantissa = Number.parseFloat(M ?? "0");
-          const exponent = Number.parseFloat(N ?? "0");
-          return tkn(TOKEN.BIG_FLOAT).literal(bigfloat(mantissa, exponent));
-        } else {
-          return tkn(TOKEN.FLOAT).literal(float(n));
-        }
+        // if (n > Number.MAX_VALUE) {
+        //   const exponential = n.toExponential();
+        //   const [M, N] = exponential.split("E");
+        //   const mantissa = Number.parseFloat(M ?? "0");
+        //   const exponent = Number.parseFloat(N ?? "0");
+        //   return tkn(TOKEN.BIG_FLOAT).literal(bigfloat(mantissa, exponent));
+        // }
+        return tkn(TOKEN.FLOAT).literal(float(n));
+        
       }
       // handle fractions
       case TOKEN.FRACTION: {
@@ -1423,6 +1873,25 @@ export function lexicalAnalysis(code: string) {
     // These are floating point numbers written in
     // scientific notation.
 
+    // if (peekIs("E")) {
+    //   if (isDigit(peekNext())) {
+    //     type = TOKEN.BIG_FLOAT;
+    //     tick();
+    //     while (isDigit(peek())) {
+    //       tick();
+    //     }
+    //   } else if (
+    //     (peekNext() === "+" || peekNext() === "-") &&
+    //     isDigit(lookup(2))
+    //   ) {
+    //     type = TOKEN.BIG_FLOAT;
+    //     tick();
+    //     tick();
+    //     while (isDigit(peek())) {
+    //       tick();
+    //     }
+    //   }
+    // }
     return decimalToken(slice(), type, hasSeparators);
   };
 
@@ -1529,7 +1998,7 @@ export function lexicalAnalysis(code: string) {
       case "@":
         return tkn(TOKEN.AT);
       case ":":
-        return tkn(TOKEN.COLON);
+        return tkn(match("=") ? TOKEN.COLON_EQUAL : TOKEN.EQUAL);
       case "&":
         return tkn(TOKEN.AMPERSAND);
       case "~":
@@ -1696,6 +2165,7 @@ enum AST_NODE_TYPE {
   FUNCTION_DECLARATION,
   VARIABLE_DECLARATION,
   LOOP,
+  VARIABLE,
 }
 
 interface Visitor<T> {
@@ -1708,6 +2178,7 @@ interface Visitor<T> {
   unex(node: Unex): T;
   branch(node: Branch): T;
   ternary(node: Ternary): T;
+  variable(node: Variable): T;
   lit(node: Lit): T;
   BLOCK(node: BLOCK): T;
   EXPRESSION(node: EXPRESSION): T;
@@ -2059,6 +2530,31 @@ function lit(value: Expression) {
   return new Lit(value);
 }
 
+class Variable extends ExpressionNode {
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.variable(this);
+  }
+  toString(): string {
+    return this._symbol._lexeme;
+  }
+  kind(): AST_NODE_TYPE {
+    return AST_NODE_TYPE.VARIABLE;
+  }
+  _symbol: TokenObj;
+  constructor(symbol: TokenObj) {
+    super();
+    this._symbol = symbol;
+  }
+}
+
+function variable(symbol: TokenObj) {
+  return new Variable(symbol);
+}
+
+function isVariable(node: ExpressionNode): node is Variable {
+  return node.kind() === AST_NODE_TYPE.VARIABLE;
+}
+
 // § Statements
 // The following classes relate to AST nodes corresponding
 // to statements.
@@ -2328,9 +2824,9 @@ class ParserState<STMT extends ASTNode, EXPR extends ASTNode> {
     this._lastStatement = emptyStatement.kind();
     this._currentStatement = emptyStatement.kind();
   }
-  private _lexer!: ReturnType<typeof lexicalAnalysis>;
+  private _lexer!: ReturnType<typeof lexical>;
   init(source: string) {
-    this._lexer = lexicalAnalysis(source);
+    this._lexer = lexical(source);
     this.next();
     return this;
   }
@@ -2356,13 +2852,13 @@ class ParserState<STMT extends ASTNode, EXPR extends ASTNode> {
   }
 
   /** Moves the parser state forward. */
-  next() {
+  next(): TokenObj {
     this._cursor++;
     this._current = this._peek;
     const nextToken = this._lexer.scan();
     if (nextToken.isToken(TOKEN.ERROR)) {
       this._error = nextToken._literal as unknown as ERROR;
-      return TOKEN.EOF;
+      return token(TOKEN.EOF, "EOF", -1);
     }
     this._peek = nextToken;
     return this._current;
@@ -2429,7 +2925,7 @@ export function syntaxAnalysis(source: string) {
   const state = enstate<ExpressionNode, StatementNode>(
     lit(nil()),
     expression(lit(nil()))
-  );
+  ).init(source);
 
   /** The "blank" binding power. */
   const ___o = BP.NIL;
@@ -2443,6 +2939,70 @@ export function syntaxAnalysis(source: string) {
     }
   };
 
+  /** Parses an infix expression. */
+  const infix = (op: TokenObj, lhs: ExpressionNode) => {
+    // Detour to handling complex assignments
+    // E.g., x += 1
+    if (state.nextIs(TOKEN.EQUAL)) {
+      if (isVariable(lhs)) {
+        const name = lhs;
+        const r = expr();
+        if (r.isLeft()) return r;
+        const rhs = r.unwrap();
+        const value = binex(lhs, op, rhs);
+        return state.newExpression(assignment(name._symbol, value));
+      } else {
+        return state.error(
+          `Invalid lefthand side of assignment. Expected a variable to the left of "${op._lexeme}" but got "${lhs.toString()}".`,
+          op._line
+        );
+      }
+    }
+    // now handle infix expressions
+    const p = precof(op._token);
+    const r = expr(p);
+    if (r.isLeft()) return r;
+    const rhs = r.unwrap();
+    return state.newExpression(binex(lhs, op, rhs));
+  };
+
+  /** Parses a literal expression. */
+  const literal = (t: TokenObj) => {
+    switch (t._token) {
+      case TOKEN.UNDEFINED:
+      case TOKEN.NIL:
+      case TOKEN.INF:
+      case TOKEN.NAN:
+      case TOKEN.BIG_INTEGER:
+      case TOKEN.FLOAT:
+      case TOKEN.INTEGER:
+      case TOKEN.FRACTION:
+      // case TOKEN.BIG_FLOAT:
+      case TOKEN.BIG_FRACTION:
+      case TOKEN.STRING:
+      case TOKEN.BOOLEAN:
+        return state.newExpression(lit(t._literal));
+      default: {
+        return state.error(
+          `Expected a literal, but got: ${t._lexeme}`,
+          t._line
+        );
+      }
+    }
+  };
+
+  /** Parses a parenthesized expression. */
+  const primary = () => {
+    const innerExpression = expr();
+    if (innerExpression.isLeft()) {
+      return innerExpression;
+    }
+    if (!state.nextIs(TOKEN.RIGHT_PAREN)) {
+      return state.error(`Expected a closing ")"`, state._current._line);
+    }
+    return innerExpression.map((e) => parend(e));
+  };
+
   /**
    * The rules table comprises mappings from every
    * token type to a triple `(Prefix, Infix, B)`,
@@ -2454,7 +3014,7 @@ export function syntaxAnalysis(source: string) {
     [TOKEN.EOF]: [____, ____, ___o],
     [TOKEN.ERROR]: [____, ____, ___o],
     [TOKEN.EMPTY]: [____, ____, ___o],
-    [TOKEN.LEFT_PAREN]: [____, ____, ___o],
+    [TOKEN.LEFT_PAREN]: [primary, ____, BP.CALL],
     [TOKEN.RIGHT_PAREN]: [____, ____, ___o],
     [TOKEN.LEFT_BRACKET]: [____, ____, ___o],
     [TOKEN.RIGHT_BRACKET]: [____, ____, ___o],
@@ -2464,22 +3024,52 @@ export function syntaxAnalysis(source: string) {
     [TOKEN.COLON]: [____, ____, ___o],
     [TOKEN.DOT]: [____, ____, ___o],
     [TOKEN.COMMA]: [____, ____, ___o],
-    [TOKEN.PLUS]: [____, ____, ___o],
-    [TOKEN.MINUS]: [____, ____, ___o],
-    [TOKEN.STAR]: [____, ____, ___o],
-    [TOKEN.SLASH]: [____, ____, ___o],
-    [TOKEN.CARET]: [____, ____, ___o],
-    [TOKEN.PERCENT]: [____, ____, ___o],
+
+    // infix operations - arithmetic
+    [TOKEN.PLUS]: [____, infix, BP.SUM],
+    [TOKEN.MINUS]: [____, infix, BP.DIFFERENCE],
+    [TOKEN.STAR]: [____, infix, BP.PRODUCT],
+    [TOKEN.SLASH]: [____, infix, BP.QUOTIENT],
+    [TOKEN.CARET]: [____, infix, BP.POWER],
+    [TOKEN.PERCENT]: [____, infix, BP.QUOTIENT],
+    [TOKEN.DIV]: [____, infix, BP.QUOTIENT],
+    [TOKEN.REM]: [____, infix, BP.QUOTIENT],
+
+    // infix operations - relations
+    [TOKEN.EQUAL_EQUAL]: [____, infix, BP.EQ],
+    [TOKEN.LESS]: [____, infix, BP.REL],
+    [TOKEN.GREATER]: [____, infix, BP.REL],
+    [TOKEN.LESS_EQUAL]: [____, infix, BP.REL],
+    [TOKEN.GREATER_EQUAL]: [____, infix, BP.REL],
+    [TOKEN.BANG_EQUAL]: [____, infix, BP.REL],
+    [TOKEN.TILDE]: [____, infix, BP.REL],
+
+    // infix operation - string concatenation
+    [TOKEN.AMPERSAND]: [____, infix, BP.STRINGOP],
+
+    // equation operation
+    [TOKEN.EQUAL]: [____, infix, BP.REL],
+
+    // assignment operation
+    [TOKEN.COLON_EQUAL]: [____, ____, ___o],
+
+    // literals
+    [TOKEN.INTEGER]: [literal, ____, BP.ATOM],
+    [TOKEN.BIG_INTEGER]: [literal, ____, BP.ATOM],
+    [TOKEN.FLOAT]: [literal, ____, BP.ATOM],
+    [TOKEN.FRACTION]: [literal, ____, BP.ATOM],
+    // [TOKEN.BIG_FLOAT]: [literal, ____, BP.ATOM],
+    [TOKEN.BIG_FRACTION]: [literal, ____, BP.ATOM],
+    [TOKEN.STRING]: [literal, ____, BP.ATOM],
+    [TOKEN.SYM_STRING]: [____, ____, ___o],
+    [TOKEN.BOOLEAN]: [literal, ____, BP.ATOM],
+    [TOKEN.NAN]: [literal, ____, BP.ATOM],
+    [TOKEN.INF]: [literal, ____, BP.ATOM],
+    [TOKEN.NIL]: [literal, ____, BP.ATOM],
+    [TOKEN.UNDEFINED]: [literal, ____, BP.ATOM],
+
     [TOKEN.BANG]: [____, ____, ___o],
-    [TOKEN.AMPERSAND]: [____, ____, ___o],
-    [TOKEN.TILDE]: [____, ____, ___o],
-    [TOKEN.EQUAL]: [____, ____, ___o],
-    [TOKEN.LESS]: [____, ____, ___o],
-    [TOKEN.GREATER]: [____, ____, ___o],
-    [TOKEN.LESS_EQUAL]: [____, ____, ___o],
-    [TOKEN.GREATER_EQUAL]: [____, ____, ___o],
-    [TOKEN.BANG_EQUAL]: [____, ____, ___o],
-    [TOKEN.EQUAL_EQUAL]: [____, ____, ___o],
+
     [TOKEN.PLUS_PLUS]: [____, ____, ___o],
     [TOKEN.MINUS_MINUS]: [____, ____, ___o],
     [TOKEN.DOT_PLUS]: [____, ____, ___o],
@@ -2491,20 +3081,9 @@ export function syntaxAnalysis(source: string) {
     [TOKEN.STAR_PLUS]: [____, ____, ___o],
     [TOKEN.STAR_MINUS]: [____, ____, ___o],
     [TOKEN.STAR_STAR]: [____, ____, ___o],
-    [TOKEN.INTEGER]: [____, ____, ___o],
-    [TOKEN.BIG_INTEGER]: [____, ____, ___o],
-    [TOKEN.FLOAT]: [____, ____, ___o],
-    [TOKEN.FRACTION]: [____, ____, ___o],
-    [TOKEN.BIG_FLOAT]: [____, ____, ___o],
-    [TOKEN.BIG_FRACTION]: [____, ____, ___o],
+
     [TOKEN.SYMBOL]: [____, ____, ___o],
-    [TOKEN.STRING]: [____, ____, ___o],
-    [TOKEN.SYM_STRING]: [____, ____, ___o],
-    [TOKEN.BOOLEAN]: [____, ____, ___o],
-    [TOKEN.NAN]: [____, ____, ___o],
-    [TOKEN.INF]: [____, ____, ___o],
-    [TOKEN.NIL]: [____, ____, ___o],
-    [TOKEN.UNDEFINED]: [____, ____, ___o],
+
     [TOKEN.AND]: [____, ____, ___o],
     [TOKEN.OR]: [____, ____, ___o],
     [TOKEN.NOT]: [____, ____, ___o],
@@ -2524,12 +3103,199 @@ export function syntaxAnalysis(source: string) {
     [TOKEN.PRINT]: [____, ____, ___o],
     [TOKEN.SUPER]: [____, ____, ___o],
     [TOKEN.THIS]: [____, ____, ___o],
-    [TOKEN.REM]: [____, ____, ___o],
-    [TOKEN.MOD]: [____, ____, ___o],
-    [TOKEN.DIV]: [____, ____, ___o],
     [TOKEN.BEGIN]: [____, ____, ___o],
     [TOKEN.END]: [____, ____, ___o],
     [TOKEN.NUMERIC_CONSTANT]: [____, ____, ___o],
     [TOKEN.NATIVE_FUNCTION]: [____, ____, ___o],
   };
+
+  /**
+   * Returns the prefix parsing rule mapped to by the given
+   * token type.
+   */
+  const prefixRule = (t: TOKEN): Parslet<ExpressionNode> => rules[t][0];
+
+  /**
+   * Returns the infix parsing rule mapped to by the given
+   * token type.
+   */
+  const infixRule = (t: TOKEN): Parslet<ExpressionNode> => rules[t][1];
+
+  /**
+   * Returns the {@link bp|precedence} of the given token type.
+   */
+  const precof = (t: TOKEN): BP => rules[t][2];
+
+  const expr = (minBP: number = BP.LOWEST): Either<ERROR, ExpressionNode> => {
+    let token = state.next();
+    const pre = prefixRule(token._token);
+    let lhs = pre(token, lit(nil()));
+    if (lhs.isLeft()) {
+      return lhs;
+    }
+    while (minBP < precof(state._peek._token)) {
+      token = state.next();
+      const r = infixRule(token._token);
+      const rhs = r(token, lhs.unwrap());
+      if (rhs.isLeft()) {
+        return rhs;
+      }
+      lhs = rhs;
+    }
+    return lhs;
+  };
+
+  return {
+    /** Returns a syntax analysis of a single expression. */
+    parsex(): Either<ERROR, ExpressionNode> {
+      if (state._error !== null) {
+        return left(state._error);
+      } else {
+        const out = expr();
+        return out;
+      }
+    },
+  };
+}
+
+class RuntimeError extends ERROR {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+function runtimeError(message: string) {
+  return new RuntimeError(message);
+}
+
+class Interpreter implements Visitor<Expression> {
+  evaluate(expr: ExpressionNode) {
+    return expr.accept(this);
+  }
+  interpret(expr: ExpressionNode) {
+    try {
+      const value = this.evaluate(expr);
+      return right(value);
+    } catch (error: unknown) {
+      const e = error as ERROR;
+      return left(e);
+    }
+  }
+  assignment(node: Assignment): Expression {
+    throw new Error("Method not implemented.");
+  }
+  binex(node: Binex): Expression {
+    const op = node._op._token;
+    const left = this.evaluate(node._left);
+    const right = this.evaluate(node._right);
+    switch (op) {
+      case TOKEN.PLUS:
+        return sum(left, right);
+      case TOKEN.MINUS:
+        return diff(left, right);
+      case TOKEN.STAR:
+        return product(left, right);
+      case TOKEN.SLASH:
+        return quotient(left, right);
+      case TOKEN.CARET:
+        return power(left, right);
+      case TOKEN.PERCENT:
+        return corefn("%", [left, right]);
+      case TOKEN.DIV:
+        return corefn("div", [left, right]);
+      case TOKEN.REM:
+        return corefn("rem", [left, right]);
+      case TOKEN.EQUAL_EQUAL:
+        return bool(left.equals(right));
+      case TOKEN.LESS:
+        return relate("<", [left, right]);
+      case TOKEN.GREATER:
+        return relate(">", [left, right]);
+      case TOKEN.LESS_EQUAL:
+        return relate("<=", [left, right]);
+      case TOKEN.GREATER_EQUAL:
+        return relate(">=", [left, right]);
+      case TOKEN.BANG_EQUAL:
+        return relate("!=", [left, right]);
+      case TOKEN.TILDE:
+        return relate("~", [left, right]);
+      case TOKEN.EQUAL:
+        return equate(left, right);
+      case TOKEN.AMPERSAND: {
+        const l = left.toString();
+        const r = right.toString();
+        return str(l + r);
+      }
+    }
+    throw runtimeError(
+      `While interpreting a binex, encountered an unknown operator: "${node._op._lexeme}".`
+    );
+  }
+  call(node: Call): Expression {
+    throw new Error("Method not implemented.");
+  }
+  propRead(node: PropRead): Expression {
+    throw new Error("Method not implemented.");
+  }
+  propWrite(node: PropWrite): Expression {
+    throw new Error("Method not implemented.");
+  }
+  parend(node: Parend): Expression {
+    throw new Error("Method not implemented.");
+  }
+  unex(node: Unex): Expression {
+    throw new Error("Method not implemented.");
+  }
+  branch(node: Branch): Expression {
+    throw new Error("Method not implemented.");
+  }
+  ternary(node: Ternary): Expression {
+    throw new Error("Method not implemented.");
+  }
+  variable(node: Variable): Expression {
+    throw new Error("Method not implemented.");
+  }
+  lit(node: Lit): Expression {
+    return node._value;
+  }
+  BLOCK(node: BLOCK): Expression {
+    throw new Error("Method not implemented.");
+  }
+  EXPRESSION(node: EXPRESSION): Expression {
+    throw new Error("Method not implemented.");
+  }
+  CONDITIONAL(node: CONDITIONAL): Expression {
+    throw new Error("Method not implemented.");
+  }
+  PRINT(node: PRINT): Expression {
+    throw new Error("Method not implemented.");
+  }
+  FUNCTION_DECLARATION(node: FUNCTION_DECLARATION): Expression {
+    throw new Error("Method not implemented.");
+  }
+  VARIABLE_DECLARATION(node: VARIABLE_DECLARATION): Expression {
+    throw new Error("Method not implemented.");
+  }
+  LOOP(node: LOOP): Expression {
+    throw new Error("Method not implemented.");
+  }
+}
+
+export function isERROR(x: any): x is ERROR {
+  return x instanceof ERROR;
+}
+
+export function isExpression(x: any): x is Expression {
+  return x instanceof Expression;
+}
+
+export function interpret(code: string) {
+  const interpreter = new Interpreter();
+  const s = syntaxAnalysis(code).parsex();
+  if (s.isLeft()) {
+    return s.unwrap();
+  } else {
+    const result = interpreter.interpret(s.unwrap());
+    return result.unwrap();
+  }
 }

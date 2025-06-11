@@ -6,45 +6,53 @@ import {RUNTIME_CLASSES} from "../../components/Diagrams";
 <TOC>
 
 - [The Ora Language](#the-ora-language)
-  - [Arithmetic Expressions](#arithmetic-expressions)
-    - [Addition](#addition)
-    - [Subtraction](#subtraction)
-    - [Multiplication](#multiplication)
-  - [Block Statements](#block-statements)
-  - [Conditional Logic](#conditional-logic)
-    - [If-else Statements](#if-else-statements)
-    - [Ternary Expressions](#ternary-expressions)
-    - [Branch Expressions](#branch-expressions)
+	- [Atoms](#atoms)
+	- [Arithmetic Expressions](#arithmetic-expressions)
+		- [Addition](#addition)
+		- [Subtraction](#subtraction)
+		- [Multiplication](#multiplication)
+		- [Real Division](#real-division)
+		- [Integer Division](#integer-division)
+		- [Exponentiation](#exponentiation)
+		- [Modulus Operation](#modulus-operation)
+		- [Remainder Operation](#remainder-operation)
+	- [Relations](#relations)
+		- [Equality](#equality)
+	- [Block Statements](#block-statements)
+	- [Conditional Logic](#conditional-logic)
+		- [If-else Statements](#if-else-statements)
+		- [Ternary Expressions](#ternary-expressions)
+		- [Branch Expressions](#branch-expressions)
 - [Operators](#operators)
 - [Reserved Words](#reserved-words)
 - [AST Nodes](#ast-nodes)
-  - [~class~ `ASTNode`](#class-astnode)
-    - [~method~ _ASTNode_`.accept(𝑉𝑖𝑠𝑖𝑡𝑜𝑟)`](#method-astnodeaccept𝑉𝑖𝑠𝑖𝑡𝑜𝑟)
-    - [~method~ _ASTNode_`.toString()`](#method-astnodetostring)
-    - [~method~ _ASTNode_`.isStatementNode()`](#method-astnodeisstatementnode)
-    - [~method~ _ASTNode_`.isExpressionNode()`](#method-astnodeisexpressionnode)
-  - [~class~ `StatementNode`](#class-statementnode)
-  - [~class~ `ExpressionNode`](#class-expressionnode)
+	- [~class~ `ASTNode`](#class-astnode)
+		- [~method~ _ASTNode_`.accept(𝑉𝑖𝑠𝑖𝑡𝑜𝑟)`](#method-astnodeaccept𝑉𝑖𝑠𝑖𝑡𝑜𝑟)
+		- [~method~ _ASTNode_`.toString()`](#method-astnodetostring)
+		- [~method~ _ASTNode_`.isStatementNode()`](#method-astnodeisstatementnode)
+		- [~method~ _ASTNode_`.isExpressionNode()`](#method-astnodeisexpressionnode)
+	- [~class~ `StatementNode`](#class-statementnode)
+	- [~class~ `ExpressionNode`](#class-expressionnode)
 - [Runtime Objects](#runtime-objects)
-  - [~class~ Expression](#class-expression)
-    - [~method~ _Expression_`.kind()`](#method-expressionkind)
-  - [~class~ Integer](#class-integer)
-    - [~function~ `int`](#function-int)
-    - [~function~ `isInt`](#function-isint)
-    - [~property~ _Integer_`._value`](#property-integer_value)
-  - [~class~ `BigInteger`](#class-biginteger)
-    - [~function~ `bigint`](#function-bigint)
-    - [~function~ `isBigInt`](#function-isbigint)
-  - [~class~ `Float`](#class-float)
-    - [~function~ `float`](#function-float)
-  - [~class~ `BigFloat`](#class-bigfloat)
-    - [~property~ _BigFloat_`._m`](#property-bigfloat_m)
-    - [~property~ _BigFloat_`._n`](#property-bigfloat_n)
-    - [~function~ `bigfloat`](#function-bigfloat)
-  - [~class~ `Fraction`](#class-fraction)
-    - [~function~ `frac`](#function-frac)
-  - [~class~ `BigFraction`](#class-bigfraction)
-    - [~function~ `bigfrac`](#function-bigfrac)
+	- [~class~ Expression](#class-expression)
+		- [~method~ _Expression_`.kind()`](#method-expressionkind)
+	- [~class~ Integer](#class-integer)
+		- [~function~ `int`](#function-int)
+		- [~function~ `isInt`](#function-isint)
+		- [~property~ _Integer_`._value`](#property-integer_value)
+	- [~class~ `BigInteger`](#class-biginteger)
+		- [~function~ `bigint`](#function-bigint)
+		- [~function~ `isBigInt`](#function-isbigint)
+	- [~class~ `Float`](#class-float)
+		- [~function~ `float`](#function-float)
+	- [~class~ `BigFloat`](#class-bigfloat)
+		- [~property~ _BigFloat_`._m`](#property-bigfloat_m)
+		- [~property~ _BigFloat_`._n`](#property-bigfloat_n)
+		- [~function~ `bigfloat`](#function-bigfloat)
+	- [~class~ `Fraction`](#class-fraction)
+		- [~function~ `frac`](#function-frac)
+	- [~class~ `BigFraction`](#class-bigfraction)
+		- [~function~ `bigfrac`](#function-bigfrac)
 - [Casting Rules for Literals](#casting-rules-for-literals)
 
 </TOC>
@@ -52,7 +60,30 @@ import {RUNTIME_CLASSES} from "../../components/Diagrams";
 Ora is written in TypeScript and deployed in JavaScript. This page documents Ora's architecture.
 
 ## The Ora Language
-This section outlines the grammar and syntax of Ora. 
+This section outlines the grammar and syntax of Ora. Ora is designed as an _expression_ based language. At runtime, _everything_ boils down to an expression. Expressions in Ora are classified into two types: (1) _atoms_ and (2) _compounds_. Atoms are expressions that cannot be reduced further. Compounds are expressions that can be reduced further. 
+
+For example, ${1}$ and ${2}$ are atoms, respectively. The expression ${1 + 2,}$ however, is a compound, since it can be reduced to ${3.}$   
+
+### Atoms
+An __atom__ is an expression that cannot be reduced further. Atoms in Ora are classified by type:
+
+1. `Integer`
+2. `BigInteger`
+3. `Float`
+4. `BigFloat`
+5. `Fraction`
+6. `BigFraction`
+7. `Complex`
+8. `Sym`
+9. `NumConst`
+10. `Inf`
+11. `NAN`
+12. `Undefined`
+13. `Bool`
+14. `Str`
+15. `SymStr`
+16. `Nil`
+
 
 ### Arithmetic Expressions
 Like most languages, Ora supports basic arithmetic expressions.
@@ -66,19 +97,6 @@ $$
 
 where ${a}$ and ${b}$ are either numeric expressions or expressions that reduce to numeric expressions.
 
-<Example>`3 + 2` reduces to `5`.</Example>
-
-<Example>`-4 + 1` reduces to `-3`.</Example>
-
-<Example>`2.8 + 1.1` reduces to `3.9`.</Example>
-
-<Example>
-Adding a floating point number and an integer results in a floating point number.
-
-`5.0 + 1` reduces to `6.0`.
-
-</Example>
-
 
 #### Subtraction
 Subtraction follows the syntax:
@@ -89,10 +107,6 @@ $$
 
 where ${a}$ and ${b}$ are either numeric expressions or expressions that reduce to numeric expressions.
 
-<Example>`8 - 6` reduces to `2`.</Example>
-
-<Example>`7 - 10` reduces to `-3`.</Example>
-
 #### Multiplication
 Multiplication follows the syntax:
 
@@ -102,7 +116,72 @@ $$
 
 where ${a}$ and ${b}$ are either numeric expressions or expressions that reduce to numeric expressions.
 
-<Example>`9 * 7` reduces to `63`.</Example>
+#### Real Division 
+Real division follows the syntax:
+
+$$
+	a ~~ \texttt{/} ~~ b
+$$
+
+where ${a}$ and ${b}$ are either numeric expressions or expressions that reduce to numeric expressions.
+
+#### Integer Division
+Integer division follows the syntax:
+
+$$
+	a ~~ \texttt{div} ~~ b
+$$
+
+where ${a}$ and ${b}$ are either numeric expressions or expressions that reduce to numeric expressions.
+
+#### Exponentiation
+Exponentiation follows the syntax:
+
+$$
+	a ~~ \texttt{\^{}} ~~ b
+$$
+
+where ${a}$ and ${b}$ are either numeric expressions or expressions that reduce to numeric expressions.
+
+#### Modulus Operation
+The modulus operation follows the syntax:
+
+$$
+	a ~~ {\texttt{\%}} ~~ b
+$$
+
+where ${a}$ and ${b}$ are either numeric expressions or expressions that reduce to numeric expressions.
+
+#### Remainder Operation
+The remainder operation follows the syntax:
+
+$$
+	a ~~ {\texttt{rem}} ~~ b
+$$
+
+where ${a}$ and ${b}$ are either numeric expressions or expressions that reduce to numeric expressions.
+
+### Relations
+#### Equality
+An equality expression follows the syntax
+
+$$
+	a ~~ \texttt{==} ~~ b
+$$
+
+where ${a}$ and ${b}$ are expressions. Equality expressions reduce to a Boolean at runtime. Importantly, the ${~~ \texttt{==} ~~}$ operator corresponds to _strict equality_. Generally, this means that ${a ~~ \texttt{==} ~~ b}$ if and only if (1) ${a}$ and ${b}$ are of the same type, and (2) ${a}$ and ${b}$ have the same values (loosely, "they look the same"). Specifically, the expression ${a ~~ \texttt{==} ~~ b}$ reduces according to the following rule:  
+
+<blockquote>
+
+Let ${\tau}$ be a type among: `Integer`, `BigInteger`, `Float`, `Sym`, `Inf`, `NAN`, `Undefined`, `Bool`, `Str`, `SymStr`, and `Nil`. If ${a}$ is of type ${\tau}$ Then ${a ~~ \texttt{==} ~~ b}$ reduces to `true` if and only if (1) ${b}$ is also of type ${\tau}$ and (2) the value of ${b}$ is the value of ${a.}$ Otherwise:
+
+1. If ${a}$ is a `BigFloat`, then ${a ~~ \texttt{==} ~~ b}$ if and only if ${b}$ is also a `BigFloat` and (1) the mantissa of ${a}$ is the mantissa of ${b,}$ and the exponent of ${a}$ is the exponent of ${b.}$ 
+2. If ${a}$ is a `Complex`, then ${a ~~ \texttt{==} ~~ b}$ if and only if ${b}$ is a complex and (1) the real part of ${a}$ is the real part of ${b,}$ and the imaginary part of ${a}$ is the imaginary part of ${b.}$  
+3. If ${a}$ is a `NumConst`, then ${a ~~ \texttt{==} ~~ b}$ if and only if ${b}$ is a `NumConst` and (1) the symbol of ${a}$ is the symbol of ${b,}$ and the value of ${a}$ is the value of ${b.}$ 
+4. If ${a}$ is a `Frac`, then ${a ~~ \texttt{==} ~~ b}$ if and only if ${b}$ is a `Frac`, and, after ${a}$ and ${b}$ are reduced to their simplest forms, (1) the numerator of ${a}$ is the numerator of ${b,}$ and (2) the denominator of ${a}$ is the denominator of ${b.}$ 
+4. If ${a}$ is a `BigFrac`, then ${a ~~ \texttt{==} ~~ b}$ if and only if ${b}$ is a `BigFrac`, and, after ${a}$ and ${b}$ are reduced to their simplest forms, (1) the numerator of ${a}$ is the numerator of ${b,}$ and (2) the denominator of ${a}$ is the denominator of ${b.}$ 
+
+</blockquote>
 
 ### Block Statements
 A _block statement_ is a discrete and finite sequence of statements. In Ora, block statements are delimited by the `begin` and `end` keywords. 
@@ -242,6 +321,12 @@ Ora has several operators, classified as follows:
 		<tr>
 			<td>`=`</td>
 			<td>`EQUAL`</td>
+			<td>equation</td>
+			<td>binary infix</td>
+		</tr>
+		<tr>
+			<td>`:=`</td>
+			<td>`COLON_EQUAL`</td>
 			<td>assignment</td>
 			<td>binary infix</td>
 		</tr>

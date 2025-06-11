@@ -2,9 +2,18 @@ import styles from "./page.module.css";
 import { links, blogs } from "./links";
 import Link from "next/link";
 import { Tex } from "./components/Tex";
-// import {lexicalAnalyzer} from "@ora/engine/main";
+import {syntaxAnalysis, interpret, isExpression, isERROR, sexprString} from "@ora/engine/main";
+import {treestring} from "@ora/engine/utils_dev";
 
 export default function Home() {
+  const r = interpret(`5 = 2 + 3`);
+  if (isERROR(r)) {
+    console.log(r.message);
+  } else {
+    console.log(sexprString(r.sexpr()));
+  }
+  
+  // console.log(j.map(x => x.));
   // const r = lexicalAnalyzer('1_000 + 12 + x').stream().map(l => l.map(t => t.toString()));
   // console.log(r);
   return (
