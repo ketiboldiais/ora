@@ -40,20 +40,13 @@ import {RUNTIME_CLASSES} from "../../components/Diagrams";
 		- [~function~ `int`](#function-int)
 		- [~function~ `isInt`](#function-isint)
 		- [~property~ _Integer_`._value`](#property-integer_value)
-	- [~class~ `BigInteger`](#class-biginteger)
-		- [~function~ `bigint`](#function-bigint)
-		- [~function~ `isBigInt`](#function-isbigint)
 	- [~class~ `Float`](#class-float)
 		- [~function~ `float`](#function-float)
-	- [~class~ `BigFloat`](#class-bigfloat)
-		- [~property~ _BigFloat_`._m`](#property-bigfloat_m)
-		- [~property~ _BigFloat_`._n`](#property-bigfloat_n)
-		- [~function~ `bigfloat`](#function-bigfloat)
 	- [~class~ `Fraction`](#class-fraction)
 		- [~function~ `frac`](#function-frac)
-	- [~class~ `BigFraction`](#class-bigfraction)
-		- [~function~ `bigfrac`](#function-bigfrac)
-- [Casting Rules for Literals](#casting-rules-for-literals)
+- [`Num`](#num)
+	- [~method~ `Num.GCD(𝑎,𝑏)`: _number_](#method-numgcd𝑎𝑏-number)
+	- [~method~ `Num.abs(𝑥)`: _number_](#method-numabs𝑥-number)
 
 </TOC>
 
@@ -68,11 +61,8 @@ For example, ${1}$ and ${2}$ are atoms, respectively. The expression ${1 + 2,}$ 
 An __atom__ is an expression that cannot be reduced further. Atoms in Ora are classified by type:
 
 1. `Integer`
-2. `BigInteger`
 3. `Float`
-4. `BigFloat`
 5. `Fraction`
-6. `BigFraction`
 7. `Complex`
 8. `Sym`
 9. `NumConst`
@@ -173,13 +163,11 @@ where ${a}$ and ${b}$ are expressions. Equality expressions reduce to a Boolean 
 
 <blockquote>
 
-Let ${\tau}$ be a type among: `Integer`, `BigInteger`, `Float`, `Sym`, `Inf`, `NAN`, `Undefined`, `Bool`, `Str`, `SymStr`, and `Nil`. If ${a}$ is of type ${\tau}$ Then ${a ~~ \texttt{==} ~~ b}$ reduces to `true` if and only if (1) ${b}$ is also of type ${\tau}$ and (2) the value of ${b}$ is the value of ${a.}$ Otherwise:
+Let ${\tau}$ be a type among: `Integer`, `Float`, `Sym`, `Inf`, `NAN`, `Undefined`, `Bool`, `Str`, `SymStr`, and `Nil`. If ${a}$ is of type ${\tau}$ Then ${a ~~ \texttt{==} ~~ b}$ reduces to `true` if and only if (1) ${b}$ is also of type ${\tau}$ and (2) the value of ${b}$ is the value of ${a.}$ Otherwise:
 
-1. If ${a}$ is a `BigFloat`, then ${a ~~ \texttt{==} ~~ b}$ if and only if ${b}$ is also a `BigFloat` and (1) the mantissa of ${a}$ is the mantissa of ${b,}$ and the exponent of ${a}$ is the exponent of ${b.}$ 
-2. If ${a}$ is a `Complex`, then ${a ~~ \texttt{==} ~~ b}$ if and only if ${b}$ is a complex and (1) the real part of ${a}$ is the real part of ${b,}$ and the imaginary part of ${a}$ is the imaginary part of ${b.}$  
-3. If ${a}$ is a `NumConst`, then ${a ~~ \texttt{==} ~~ b}$ if and only if ${b}$ is a `NumConst` and (1) the symbol of ${a}$ is the symbol of ${b,}$ and the value of ${a}$ is the value of ${b.}$ 
-4. If ${a}$ is a `Frac`, then ${a ~~ \texttt{==} ~~ b}$ if and only if ${b}$ is a `Frac`, and, after ${a}$ and ${b}$ are reduced to their simplest forms, (1) the numerator of ${a}$ is the numerator of ${b,}$ and (2) the denominator of ${a}$ is the denominator of ${b.}$ 
-4. If ${a}$ is a `BigFrac`, then ${a ~~ \texttt{==} ~~ b}$ if and only if ${b}$ is a `BigFrac`, and, after ${a}$ and ${b}$ are reduced to their simplest forms, (1) the numerator of ${a}$ is the numerator of ${b,}$ and (2) the denominator of ${a}$ is the denominator of ${b.}$ 
+1. If ${a}$ is a `Complex`, then ${a ~~ \texttt{==} ~~ b}$ if and only if ${b}$ is a complex and (1) the real part of ${a}$ is the real part of ${b,}$ and the imaginary part of ${a}$ is the imaginary part of ${b.}$  
+2. If ${a}$ is a `NumConst`, then ${a ~~ \texttt{==} ~~ b}$ if and only if ${b}$ is a `NumConst` and (1) the symbol of ${a}$ is the symbol of ${b,}$ and the value of ${a}$ is the value of ${b.}$ 
+3. If ${a}$ is a `Frac`, then ${a ~~ \texttt{==} ~~ b}$ if and only if ${b}$ is a `Frac`, and, after ${a}$ and ${b}$ are reduced to their simplest forms, (1) the numerator of ${a}$ is the numerator of ${b,}$ and (2) the denominator of ${a}$ is the denominator of ${b.}$ 
 
 </blockquote>
 
@@ -624,7 +612,6 @@ All instances of `Expression` have a method called `kind`. This method takes no 
 The `Integer` class corresponds to the set of integers within JavaScript's safe range for number type data (${[-2^{53} - 1, 2^{53} - 1]}$). Internally, Ora compares values to JavaScript's `Number.MAX_SAFE_INTEGER` to determine whether to cast values to `BigInteger`.
 
 #### ~function~ `int`
-
 Returns a new `Integer`:
 
 ```ts
@@ -632,7 +619,6 @@ const n = int(5); // n is an Integer, of value 5.
 ```
 
 #### ~function~ `isInt`
-
 This function has the signature:
 
 $$
@@ -649,59 +635,16 @@ Given an `Integer` ${x,}$ the expression ${x.\texttt{value}}$ reduces to the val
 const x = int(1);
 console.log(x._value); // prints 1
 ```
-
-### ~class~ `BigInteger`
-
-The `BigInteger` class corresponds to the set of integers outside the safe range for number type (${[-2^{53} - 1, 2^{53} - 1]}$).
-
-#### ~function~ `bigint`
-
-Returns a new `BigInteger`:
-
-```ts
-const b = bigint(5000); // b is a BigInteger, of value 5000.
-```
-
-#### ~function~ `isBigInt`
-
-This function has the signature:
-
-$$
-	\texttt{isBigInt}(x: \texttt{Expression}) \to \texttt{boolean}.
-$$
-
-That is, given an [`Expression`](#class-expression) ${x,}$ the function `isBigInt` returns true, and type-asserts, only if ${x}$ is a [`BigInteger`](#class-biginteger). We use this function to explicitly check whether a given expression is a `BigInteger`.
-
 ### ~class~ `Float`
-
 The `Float` class corresponds to floating point numbers. E.g., 3.1, 2.8, 9.99, etc.
 
 #### ~function~ `float`
-
 Returns a new `Float`.
 
-### ~class~ `BigFloat`
-
-The `BigFloat` class corresponds to arbitrary precision floating point numbers. Expressions of type `BigFloat` are interpreted as numbers of the form ${m \times 10^n,}$ where ${m}$ is a real number and ${n}$ is an integer.
-
-#### ~property~ _BigFloat_`._m`
-
-Given a `BigFloat` ${b,}$ the expression ${b.\texttt{\_m}}$ corresponds to the mantissa of ${b}$ (i.e., the ${m}$ in ${b = m \times 10^n}$). For example, if ${b = 1.4592 \times 10^{-15},}$ then ${m = 1.4592.}$
-
-#### ~property~ _BigFloat_`._n`
-
-Given a `BigFloat` ${b,}$ the expression ${b.\texttt{\_n}}$ corresponds to the exponent of ${b}$ (i.e., the ${n}$ in ${b = m \times 10^n}$). For example, if ${b = 1.4592 \times 10^{-15},}$ then ${n = -15.}$
-
-#### ~function~ `bigfloat`
-
-Given a JavaScript number or string ${m}$ and a JavaScript number ${n,}$ returns a new `BigFloat` of the form ${m \times 10^n.}$ The argument ${n}$ must be an integer.
-
 ### ~class~ `Fraction`
-
 The `Fraction` class corresponds to rational numbers. That is, numbers of the form ${a/b,}$ where ${a}$ and ${b}$ are integers.
 
 #### ~function~ `frac`
-
 This function has the signature:
 
 $$
@@ -714,110 +657,14 @@ That is, given two arguments ${a}$ and ${b}$—both of which are either an [`Int
 const r = frac(1, 3); // r is the Fraction 1/3.
 ```
 
-### ~class~ `BigFraction`
+## `Num`
+The `Num` abstract class exposes numeric methods that take the JavaScript _number_ type as argument(s). These are static methods within the `Num` abstract class. The following sections outline these methods.
 
-In most cases, [`Fraction`](#class-fraction) objects in Ora suffice for representing rational numbers. Arbitrary precision rational numbers, however, are best represented by `BigFraction` objects. Like `Fraction`s, `BigFraction`s are numbers of the form ${a/b,}$ except ${a}$ and ${b}$ are either JavaScript `bigint`s or instances of [`BigInteger`](#class-biginteger).
+### ~method~ `Num.GCD(𝑎,𝑏)`: _number_
+Given two JavaScript numbers ${a}$ and ${b,}$ returns the greatest common denominator of ${a}$ and ${b.}$
 
-#### ~function~ `bigfrac`
-
-This is a binary function with the signature:
-
-$$
-	\texttt{bigfrac}(a: \texttt{bigint}, b: \texttt{bigint}) \to \texttt{BigFraction}.
-$$
-
-I.e., given arguments ${a}$ and ${b,}$ both of which are JavaScript `bigint`s, `bigfrac` returns a new [`BigFraction`](#class-bigfraction).
-
-## Casting Rules for Literals
-
-<figure className="table">
-	<table>
-		<thead>
-			<tr>
-				<th></th>
-				<th>`Integer`</th>
-				<th>`BigInteger`</th>
-				<th>`Float`</th>
-				<th>`BigFloat`</th>
-				<th>`Fraction`</th>
-				<th>`BigFraction`</th>
-				<th>`Complex`</th>
-			</tr>
-		</thead>
-		<tbody>
-			<tr>
-				<td>`Integer`</td>
-				<td>`Integer`</td>
-				<td>`BigInteger`</td>
-				<td>`Float`</td>
-				<td>`BigFloat`</td>
-				<td>`Fraction`</td>
-				<td>`BigFraction`</td>
-				<th>`Complex`</th>
-			</tr>
-			<tr>
-				<td>`BigInteger`</td>
-				<td>`BigInteger`</td>
-				<td>`BigInteger`</td>
-				<td>`BigFloat`</td>
-				<td>`BigFloat`</td>
-				<td>`BigFraction`</td>
-				<td>`BigFraction`</td>
-				<td>`Complex`</td>
-			</tr>
-			<tr>
-				<td>`Float`</td>
-				<td>`Float`</td>
-				<td>`BigFloat`</td>
-				<td>`Float`</td>
-				<td>`BigFloat`</td>
-				<td>`Float`</td>
-				<td>`BigFloat`</td>
-				<td>`Complex`</td>
-			</tr>
-			<tr>
-				<td>`BigFloat`</td>
-				<td>`BigFloat`</td>
-				<td>`BigFloat`</td>
-				<td>`BigFloat`</td>
-				<td>`BigFloat`</td>
-				<td>`BigFloat`</td>
-				<td>`BigFloat`</td>
-				<td>`Complex`</td>
-			</tr>
-			<tr>
-				<td>`Fraction`</td>
-				<td>`Fraction`</td>
-				<td>`BigFraction`</td>
-				<td>`Float`</td>
-				<td>`BigFloat`</td>
-				<td>`Fraction`</td>
-				<td>`BigFraction`</td>
-				<td>`Complex`</td>
-			</tr>
-			<tr>
-				<td>`BigFraction`</td>
-				<td>`BigFraction`</td>
-				<td>`BigFraction`</td>
-				<td>`BigFloat`</td>
-				<td>`BigFloat`</td>
-				<td>`BigFraction`</td>
-				<td>`BigFraction`</td>
-				<td>`Complex`</td>
-			</tr>
-			<tr>
-				<td>`Complex`</td>
-				<td>`Complex`</td>
-				<td>`Complex`</td>
-				<td>`Complex`</td>
-				<td>`Complex`</td>
-				<td>`Complex`</td>
-				<td>`Complex`</td>
-				<td>`Complex`</td>
-			</tr>
-		</tbody>
-	</table>
-</figure>
+### ~method~ `Num.abs(𝑥)`: _number_
+Given a JavaScript number ${x,}$ returns the absolute value of ${x.}$
 
 export default function MDXPage({ children }) {
 	return <MdxLayout>{children}</MdxLayout>

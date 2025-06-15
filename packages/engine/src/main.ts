@@ -90,15 +90,11 @@ abstract class Numeric extends Atomic {}
 
 abstract class Real extends Numeric {
   abstract sign(): -1 | 0 | 1;
-  abstract toExponential(): string;
-  // abstract get _exponent(): number;
 }
 
 type $EXPRESSION =
   | $INTEGER
-  | $BIG_INTEGER
   | $FLOAT
-  // | $BIG_FLOAT
   | $FRACTION
   | $BIG_FRACTION
   | $COMPLEX
@@ -121,9 +117,7 @@ type $EXPRESSION =
   | $FUNC;
 
 type $INTEGER = ["INTEGER", number];
-type $BIG_INTEGER = ["BIG_INTEGER", bigint];
 type $FLOAT = ["FLOAT", number];
-// type $BIG_FLOAT = ["BIG_FLOAT", string];
 type $FRACTION = ["FRACTION", string];
 type $BIG_FRACTION = ["BIG_FRACTION", string];
 type $COMPLEX = ["COMPLEX", string];
@@ -150,8 +144,6 @@ export function sexprString(expression: $EXPRESSION): string {
   switch (type) {
     case "INTEGER":
       return `(int ${expression[1]})`;
-    case "BIG_INTEGER":
-      return `(big_integer ${expression[1]})`;
     case "FLOAT":
       return `(float ${expression[1]})`;
     // case "BIG_FLOAT":
@@ -197,13 +189,45 @@ export function sexprString(expression: $EXPRESSION): string {
   }
 }
 
+export abstract class Num {
+  /**
+   * Returns the greatest common denominator of two
+   * integers a and b.
+   * @param a an integer
+   * @param b an integer
+   * @returns an integer.
+   */
+  static GCD(a: number, b: number) {
+    let t = 0;
+    while (b !== 0) {
+      t = b;
+      b = a % b;
+      a = t;
+    }
+    return a;
+  }
+
+  /** Returns the absolute value of the given number. */
+  static abs(x: number) {
+    return Math.abs(x);
+  }
+}
+
 /** An object corresponding to an Integer. */
 class Integer extends Real {
   /** The value of this integer. */
   _value: number;
 
-  toExponential(): string {
-    return `${this._value}E+0`;
+  abs() {
+    return int(Math.abs(this._value));
+  }
+
+  get _numerator() {
+    return this._value;
+  }
+
+  get _denominator() {
+    return 1;
   }
 
   sign(): -1 | 0 | 1 {
@@ -226,6 +250,10 @@ class Integer extends Real {
     return isInt(other) && this._value === other._value;
   }
 
+  toFraction() {
+    return frac(this._value, 1);
+  }
+
   constructor(value: number) {
     super();
     this._value = Math.floor(value);
@@ -246,86 +274,10 @@ export function isInt(expr: any): expr is Integer {
   return !isUnsafe(expr) && expr.kind() === EXPR.INTEGER;
 }
 
-/** An object corresponding to a Big Integer. */
-export class BigInteger extends Real {
-  kind(): EXPR {
-    return EXPR.BIG_INTEGER;
-  }
-
-  toExponential(): string {
-    let value = this._value;
-    if (typeof value !== "bigint")
-      throw new Error(
-        "Argument must be a bigint, but a " + typeof value + " was supplied."
-      );
-
-    //
-
-    const isNegative = value < 0;
-    if (isNegative) value = -value; // Using the absolute value for the digits.
-
-    const str = value.toString();
-
-    const exp = str.length - 1;
-    if (exp == 0) return (isNegative ? "-" : "") + str + "E+0";
-
-    const mantissaDigits = str.replace(/(0+)$/, ""); // Remove any mathematically insignificant zeroes.
-
-    // Use the single first digit for the integral part of the mantissa, and all following digits for the fractional part (if any).
-    let mantissa = mantissaDigits.charAt(0);
-    if (mantissaDigits.length > 1) {
-      mantissa += "." + mantissaDigits.substring(1);
-    }
-
-    return (isNegative ? "-" : "") + mantissa + "E+" + exp.toString();
-  }
-
-  sign(): -1 | 0 | 1 {
-    return this._value < 0 ? -1 : this._value > 0 ? 1 : 0;
-  }
-
-  toString(): string {
-    return `${this._value}`;
-  }
-
-  sexpr(): $EXPRESSION {
-    return ["BIG_INTEGER", this._value];
-  }
-
-  equals(other: Expression): boolean {
-    return isBigInt(other) && other._value === this._value;
-  }
-
-  /** The value of this big integer. */
-  _value: bigint;
-  constructor(value: bigint) {
-    super();
-    this._value = value;
-  }
-}
-
-/** Returns a new big integer. */
-export function bigint(value: bigint) {
-  return new BigInteger(value);
-}
-
-/**
- * Returns true, and type-asserts, only if the
- * given Expression `expr` is a BigInteger.
- */
-export function isBigInt(expr: Expression): expr is BigInteger {
-  return !isUnsafe(expr) && expr.kind() === EXPR.BIG_INTEGER;
-}
-
 /** An object corresponding to a floating point number. */
 export class Float extends Real {
   kind(): EXPR {
     return EXPR.FLOAT;
-  }
-  toExponential(): string {
-    const v = this._value.toExponential().replace('e', 'E');
-    return v;
-    
   }
 
   sign(): -1 | 0 | 1 {
@@ -361,54 +313,6 @@ export function isFloat(x: Expression): x is Float {
   return !isUnsafe(x) && x.kind() === EXPR.FLOAT;
 }
 
-/** Returns a new Big Real number. */
-// export class BigFloat extends Real {
-//   kind(): EXPR {
-//     return EXPR.BIG_FLOAT;
-//   }
-
-//   sign(): -1 | 0 | 1 {
-//     return this._m < 0 ? -1 : this._m > 0 ? 1 : 0;
-//   }
-
-//   toExponential(): string {
-//     return this.toString();
-//   }
-
-//   toString(): string {
-//     const m = `${this._m}`;
-//     const n = `${this._n}`;
-//     return `${m}E${this._n < 0 ? "" : "+"}${n}`;
-//   }
-
-//   sexpr(): $EXPRESSION {
-//     return ["BIG_FLOAT", this.toString()];
-//   }
-
-//   equals(other: Expression): boolean {
-//     return isBigFloat(other) && this._m === other._m && this._n === other._n;
-//   }
-
-//   /** This big real's significand. */
-//   _m: number;
-//   /** This big real's exponent. This must be an integer. */
-//   _n: number = 0;
-//   constructor(m: number, n: number) {
-//     super();
-//     this._m = m;
-//     this._n = Math.floor(n);
-//   }
-// }
-
-// /** Returns a new big real number. */
-// export function bigfloat(m: number, n: number = 0) {
-//   return new BigFloat(m, n);
-// }
-
-// export function isBigFloat(x: Expression): x is BigFloat {
-//   return !isUnsafe(x) && x.kind() === EXPR.BIG_FLOAT;
-// }
-
 /** An object corresponding to a Fraction. */
 export class Fraction extends Real {
   kind(): EXPR {
@@ -423,20 +327,34 @@ export class Fraction extends Real {
     return `${this._n.toString()}|${this._d.toString()}`;
   }
 
-  toExponential(): string {
-    return float(this._value).toExponential();
-  }
-
   sexpr(): $EXPRESSION {
     return ["FRACTION", this.toString()];
   }
 
   equals(other: Expression): boolean {
-    return isFrac(other) && this._n === other._n && this._d === other._d;
+    if (isFrac(other)) {
+      const a = Fraction.simplify(this._n._value, this._d._value);
+      const b = Fraction.simplify(other._n._value, other._d._value);
+      return a._n === b._n && a._d === b._d;
+    }
+    if (isInt(other)) {
+      const a = other.toFraction();
+      const b = Fraction.simplify(this._n._value, this._d._value);
+      return a._n === b._n && a._d === b._d;
+    }
+    return false;
   }
 
   get _value() {
     return this._n._value / this._d._value;
+  }
+
+  static simplify(numerator: number, denominator: number) {
+    const sgn = Math.sign(numerator) * Math.sign(denominator);
+    const n = Math.abs(numerator);
+    const d = Math.abs(denominator);
+    const f = Num.GCD(n, d);
+    return frac((sgn * n) / f, d / f);
   }
 
   /** This fraction's numerator. */
@@ -463,58 +381,6 @@ export function frac(
 
 export function isFrac(x: Expression): x is Fraction {
   return !isUnsafe(x) && x.kind() === EXPR.FRACTION;
-}
-
-/**
- * Represents a fraction--that is,
- * a number of the form `a/b`, where `a` and `b`
- * are bigints.
- */
-export class BigFraction extends Real {
-  kind(): EXPR {
-    return EXPR.BIG_FRACTION;
-  }
-
-  sign(): -1 | 0 | 1 {
-    return this._value < 0 ? -1 : this._value > 0 ? 1 : 0;
-  }
-
-  toString(): string {
-    return `${this._n}|${this._d}`;
-  }
-
-  sexpr(): $EXPRESSION {
-    return ["BIG_FRACTION", this.toString()];
-  }
-
-  equals(other: Expression): boolean {
-    return isBigFrac(other) && other._n === this._n && other._d === this._d;
-  }
-
-  toExponential(): string {
-    throw new Error(`BigFraction.toExponential not implemented`)
-  }
-
-  get _value() {
-    return this._n / this._d;
-  }
-
-  _n: bigint;
-  _d: bigint;
-  constructor(n: bigint, d: bigint) {
-    super();
-    this._n = n;
-    this._d = d;
-  }
-}
-
-/** Returns a new BigFraction. */
-export function bigfrac(n: bigint, d: bigint) {
-  return new BigFraction(n, d);
-}
-
-export function isBigFrac(x: Expression): x is BigFraction {
-  return !isUnsafe(x) && x.kind() === EXPR.BIG_FRACTION;
 }
 
 /**
@@ -1251,19 +1117,10 @@ export enum TOKEN {
   // Literals
   /** A token corresponding to an integer */
   INTEGER,
-  /** A token corresponding to a big integer */
-  BIG_INTEGER,
   /** A token corresponding to an floating point number. */
   FLOAT,
   /** A token corresponding to a fraction. */
   FRACTION,
-  /**
-   * A token corresponding to a big floating point number
-   * (a number written in scientific notation).
-   */
-  // BIG_FLOAT,
-  /** A token corresponding to a big fraction. */
-  BIG_FRACTION,
   /** A token corresponding to a symbol. */
   SYMBOL,
   /** A token corresponding to a string. */
@@ -1365,12 +1222,7 @@ type Keyword =
   | "false"
   | "true";
 
-type NumberTokenType =
-  | TOKEN.INTEGER
-  | TOKEN.BIG_INTEGER
-  | TOKEN.FLOAT
-  | TOKEN.FRACTION
-  // | TOKEN.BIG_FLOAT;
+type NumberTokenType = TOKEN.INTEGER | TOKEN.FLOAT | TOKEN.FRACTION;
 
 /**
  * Represents a token.
@@ -1740,32 +1592,13 @@ export function lexical(code: string) {
       // handle integers
       case TOKEN.INTEGER: {
         const n = Number.parseInt(numstr);
-        if (n > Number.MAX_SAFE_INTEGER) {
-          return tkn(TOKEN.BIG_INTEGER).literal(bigint(BigInt(numstr)));
-        } else {
-          return tkn(TOKEN.INTEGER).literal(int(n));
-        }
+
+        return tkn(TOKEN.INTEGER).literal(int(n));
       }
-      // handle scientific numbers
-      // case TOKEN.BIG_FLOAT: {
-      //   const [a, b] = numstr.split("E");
-      //   const base = Number.parseFloat(a ?? "");
-      //   const exponent = Number.parseInt(b ?? "");
-      //   return tkn(TOKEN.BIG_FLOAT).literal(bigfloat(base, exponent));
-      // }
       // handle floats
       case TOKEN.FLOAT: {
         const n = Number.parseFloat(numstr);
-        // handle very big floats
-        // if (n > Number.MAX_VALUE) {
-        //   const exponential = n.toExponential();
-        //   const [M, N] = exponential.split("E");
-        //   const mantissa = Number.parseFloat(M ?? "0");
-        //   const exponent = Number.parseFloat(N ?? "0");
-        //   return tkn(TOKEN.BIG_FLOAT).literal(bigfloat(mantissa, exponent));
-        // }
         return tkn(TOKEN.FLOAT).literal(float(n));
-        
       }
       // handle fractions
       case TOKEN.FRACTION: {
@@ -1774,21 +1607,11 @@ export function lexical(code: string) {
         const denominator_as_number = Number.parseInt(
           denominator_as_string ?? "0"
         );
-        if (
-          numerator_as_number > Number.MAX_SAFE_INTEGER ||
-          denominator_as_number > Number.MAX_SAFE_INTEGER
-        ) {
-          return tkn(TOKEN.BIG_FRACTION).literal(
-            bigfrac(BigInt(numerator_as_number), BigInt(denominator_as_number))
-          );
-        } else {
-          return tkn(TOKEN.FRACTION).literal(
-            frac(numerator_as_number, denominator_as_number)
-          );
-        }
+        return tkn(TOKEN.FRACTION).literal(
+          frac(numerator_as_number, denominator_as_number)
+        );
       }
     }
-    return errorToken("Unrecognized decimal");
   };
 
   /**
@@ -2939,6 +2762,23 @@ export function syntaxAnalysis(source: string) {
     }
   };
 
+  /** Parses a prefix expression. */
+  const prefix = (op: TokenObj) => {
+    const precedence = precof(op._token);
+    const parseAttempt = expr(precedence);
+    if (parseAttempt.isLeft()) {
+      return parseAttempt;
+    }
+    const arg = parseAttempt.unwrap();
+    if (op.isToken(TOKEN.MINUS)) {
+      return state.newExpression(unaryPrefix(op, arg));
+    } else if (op.isToken(TOKEN.PLUS)) {
+      return state.newExpression(unaryPrefix(op, arg));
+    } else {
+      return state.error(`Unknown prefix operator "${op._lexeme}"`, op._line);
+    }
+  };
+
   /** Parses an infix expression. */
   const infix = (op: TokenObj, lhs: ExpressionNode) => {
     // Detour to handling complex assignments
@@ -2969,16 +2809,14 @@ export function syntaxAnalysis(source: string) {
   /** Parses a literal expression. */
   const literal = (t: TokenObj) => {
     switch (t._token) {
+      // case TOKEN.BIG_FLOAT:
       case TOKEN.UNDEFINED:
       case TOKEN.NIL:
       case TOKEN.INF:
       case TOKEN.NAN:
-      case TOKEN.BIG_INTEGER:
       case TOKEN.FLOAT:
       case TOKEN.INTEGER:
       case TOKEN.FRACTION:
-      // case TOKEN.BIG_FLOAT:
-      case TOKEN.BIG_FRACTION:
       case TOKEN.STRING:
       case TOKEN.BOOLEAN:
         return state.newExpression(lit(t._literal));
@@ -3026,8 +2864,8 @@ export function syntaxAnalysis(source: string) {
     [TOKEN.COMMA]: [____, ____, ___o],
 
     // infix operations - arithmetic
-    [TOKEN.PLUS]: [____, infix, BP.SUM],
-    [TOKEN.MINUS]: [____, infix, BP.DIFFERENCE],
+    [TOKEN.PLUS]: [prefix, infix, BP.SUM],
+    [TOKEN.MINUS]: [prefix, infix, BP.DIFFERENCE],
     [TOKEN.STAR]: [____, infix, BP.PRODUCT],
     [TOKEN.SLASH]: [____, infix, BP.QUOTIENT],
     [TOKEN.CARET]: [____, infix, BP.POWER],
@@ -3055,11 +2893,8 @@ export function syntaxAnalysis(source: string) {
 
     // literals
     [TOKEN.INTEGER]: [literal, ____, BP.ATOM],
-    [TOKEN.BIG_INTEGER]: [literal, ____, BP.ATOM],
     [TOKEN.FLOAT]: [literal, ____, BP.ATOM],
     [TOKEN.FRACTION]: [literal, ____, BP.ATOM],
-    // [TOKEN.BIG_FLOAT]: [literal, ____, BP.ATOM],
-    [TOKEN.BIG_FRACTION]: [literal, ____, BP.ATOM],
     [TOKEN.STRING]: [literal, ____, BP.ATOM],
     [TOKEN.SYM_STRING]: [____, ____, ___o],
     [TOKEN.BOOLEAN]: [literal, ____, BP.ATOM],
@@ -3244,7 +3079,19 @@ class Interpreter implements Visitor<Expression> {
     throw new Error("Method not implemented.");
   }
   unex(node: Unex): Expression {
-    throw new Error("Method not implemented.");
+    const arg = this.evaluate(node._arg);
+    const op = node._op;
+    switch (op._token) {
+      case TOKEN.MINUS: {
+        return product(int(-1), arg);
+      }
+      case TOKEN.PLUS: {
+        return product(int(1), arg);
+      }
+      default: {
+        throw runtimeError(`Unrecognized unary operator: ${op._lexeme}`);
+      }
+    }
   }
   branch(node: Branch): Expression {
     throw new Error("Method not implemented.");

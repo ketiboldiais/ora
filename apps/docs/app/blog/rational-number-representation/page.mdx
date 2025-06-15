@@ -1,0 +1,100 @@
+import MdxLayout from "../../components/mdx-layout";
+
+# Representing Rational Numbers
+
+Ora provides native support for rational numbers. In Ora, an integer divided by an integer is interpreted as a rational number. To perform real division, at least one of the operands must be a float. For example, writing the expression
+
+$$
+	\texttt{1/2}
+$$
+
+is interpreted as the rational number ${1/2.}$ Writing:
+
+$$
+	\texttt{1.0/2.0}
+$$
+
+is reduced to the floating point value ${0.5.}$ This article presents and explains the algorithms Ora uses for rational number arithmetic.
+
+## The Fraction Class
+Simple rational numbers are represented in Ora with the `Fraction` class. The two key properties of `Fraction` objects (instances of the `Fraction` class) are `_numerator` and `_denominator`. These two properties follow from the common definition of a rational number:
+
+<blockquote>
+
+__*definition*__. A rational number is a number of the form ${a/b,}$ where ${a}$ and ${b}$ are integers, with ${b \neq 0.}$
+
+</blockquote>
+
+## Simplest Form
+Writing the `Fraction` class, the first thing we want to implement are _comparison relations_. In particular, we want to be able to tell whether two rational numbers are equal. Implementing equality first makes for easier test writing.  
+
+Fractions have a bit of a funny property. Clearly, ${1/2 = 1/2.}$ But, as any elementary school student would remind us, these statements are also true: ${1/2 = 2/4,}$ ${2/4 = 4/8,}$ ${4/8 = 8/16,}$ etc. Lexically, they aren't equal, but they certainly are numerically: Suppose ${A}$ and ${B}$ buy a pie. They divide it into ${8}$ pieces. ${A}$ shall have ${4,}$ and ${B}$ shall have ${4.}$ Thus, ${A}$ takes ${4/8}$ and ${B}$ takes ${4/8.}$ This is the same thing as saying that ${A}$ takes half the pie (${1/2}$) and ${B}$ takes half the pie (${1/2}$).
+
+Thus, to implement equality, we must first implement a way of reducing any given fraction to _simplest form_. We define _simplest form_ as follows:
+
+<blockquote>
+
+__*definition*__. A fraction ${a/b}$ is in simplest form when the numerator and the denominator have no common factors other than one.
+
+</blockquote>
+
+We can reduce a fraction ${a/b}$ to satisfy this definition by first finding the greatest common factor of the two integers ${a}$ and ${b.}$ We can do so with _Euclid's algorithm_, implemented via recursion:
+
+<Procedure>
+
+> __*algorithm*__. Recursive GCF
+
+Returns the greatest common factor of two integers ${a}$ and ${b.}$ 
+
+- __input__
+  - ${a:}$ an integer.
+  - ${b:}$ an integer. 
+- __output__
+  - an integer.
+
+1. __function__ GCF `(`${a,}$ ${b}$`)`:
+   1. __if__ `(` ${b = 0}$ `)`: 
+      1. __return__ ${a}$
+   2. __else__:
+      1. __return__ GCF`(`${b,}$ ${a ~ \text{rem} ~ b}$`)`
+
+</Procedure>
+
+This is an elegant algorithm. But, we risk entering a stack overflow with large enough integers. A safer implementation would use iteration:
+
+<Procedure>
+
+> __*algorithm*__. Iterative GCF.
+
+- __input__
+  - ${a:}$ an integer.
+  - ${b:}$ an integer. 
+- __output__
+  - an integer.
+
+1. __function__ GCF(${a,}$ ${b}$):
+   1. ${t \leftarrow 0}$
+   2. __while__ ${b \neq 0}$:
+      1. ${t \leftarrow b}$
+      2. ${b \leftarrow a ~ \text{rem} ~ b}$
+      3. ${a \leftarrow t}$
+   3. __return__ ${a}$
+</Procedure>
+
+The iterative approach, while not as elegant, gets the job done safely. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+export default function MDXPage({ children }) {
+	return <MdxLayout>{children}</MdxLayout>
+}

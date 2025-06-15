@@ -618,8 +618,11 @@ div.procedure {
 div.procedure blockquote {
   margin: 0;
   padding: 0;
-  font-size: 1.1em;
+  font-size: 1em;
   border-bottom: solid thin lightgray;
+  background-color: var(--background);
+  border-radius: 0;
+  width: 100%;
 }
 div.procedure pre {
   margin: 0;
@@ -679,22 +682,22 @@ div.procedure li em {
 }
 
 div.procedure ol li::before {
-  right: 1rem;
+  right: 0.95rem;
 }
 div.procedure ol li li::before {
-  right: 2.1rem;
+  right: 2.05rem;
 }
 div.procedure ol li li li::before {
-  right: 3.1rem;
+  right: 3.15rem;
 }
 div.procedure ol li li li li::before {
   right: 4.2rem;
 }
 div.procedure ol li li li li li::before {
-  right: 5.1rem;
+  right: 5.2rem;
 }
 div.procedure ol li li li li li li::before {
-  right: 6.1rem;
+  right: 6.2rem;
 }
 div.procedure > ol {
   margin-top: 4px;

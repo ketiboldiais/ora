@@ -7,6 +7,6 @@ export const links: Link[] = [
 ]
 
 export const blogs: Link[] = [
-    {title: "Representing Expressions", url: "representing-expressions"},
+    {title: "Rational Number Representation", url: "rational-number-representation"},
     {title: "Tokenization", url: "tokenization"},
 ]
