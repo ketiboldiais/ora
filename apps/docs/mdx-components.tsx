@@ -26,6 +26,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       </div>
     ),
     Procedure: (props) => <div className="procedure">{props.children}</div>,
+    ProcedureCaption: (props) => <p className="procedure-caption">{props.children}</p>,
     TOC: (props) => (
       <div className={"toc"}>
         <Link href="/">Home</Link>

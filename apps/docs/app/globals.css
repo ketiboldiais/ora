@@ -610,7 +610,7 @@ div.procedure {
   counter-reset: lineNumber -1;
   border-top: solid thin lightgray;
   border-bottom: solid thin lightgray;
-  padding: 0 0 0 0;
+  padding: 0 0 5px 0;
   margin: 1em 1.5em;
   overflow-y: scroll;
 }
@@ -803,4 +803,15 @@ div.example-body {
 
 div.example p:first-child {
   margin: 0;
+}
+
+.procedure-caption {
+  color: var(--aside-color);
+  text-align: right;
+  margin: 0;
+  margin-top: -10px;
+  margin-right: 20px;
+  font-size: 0.9rem;
+  width: fit-content;
+  float: right;
 }

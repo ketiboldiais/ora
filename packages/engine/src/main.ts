@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Either, left, right } from "./utils_fp";
 import {
@@ -146,8 +147,6 @@ export function sexprString(expression: $EXPRESSION): string {
       return `(int ${expression[1]})`;
     case "FLOAT":
       return `(float ${expression[1]})`;
-    // case "BIG_FLOAT":
-    //   return `(big_float ${expression[1]})`;
     case "FRACTION":
       return `(fraction ${expression[1]})`;
     case "BIG_FRACTION":
@@ -966,7 +965,7 @@ export function func(op: string, args: Expression[]) {
   return new Func(op, args);
 }
 
-type CORE_FUNCTION_NAME = "%" | "div" | "rem";
+type CORE_FUNCTION_NAME = "%" | "div" | "rem" | "!";
 
 /** An expression corresponding to a core function. */
 export class CoreFn extends Compound {
@@ -1692,29 +1691,6 @@ export function lexical(code: string) {
       }
       return decimalToken(slice(), type, hasSeparators);
     }
-    // Handle raw big floats.
-    // These are floating point numbers written in
-    // scientific notation.
-
-    // if (peekIs("E")) {
-    //   if (isDigit(peekNext())) {
-    //     type = TOKEN.BIG_FLOAT;
-    //     tick();
-    //     while (isDigit(peek())) {
-    //       tick();
-    //     }
-    //   } else if (
-    //     (peekNext() === "+" || peekNext() === "-") &&
-    //     isDigit(lookup(2))
-    //   ) {
-    //     type = TOKEN.BIG_FLOAT;
-    //     tick();
-    //     tick();
-    //     while (isDigit(peek())) {
-    //       tick();
-    //     }
-    //   }
-    // }
     return decimalToken(slice(), type, hasSeparators);
   };
 
@@ -2558,18 +2534,31 @@ class VARIABLE_DECLARATION extends StatementNode {
   }
   _name: TokenObj;
   _init: ExpressionNode;
-  constructor(name: TokenObj, init: ExpressionNode) {
+  _mutable: boolean;
+  constructor(name: TokenObj, init: ExpressionNode, mutable: boolean) {
     super();
     this._name = name;
     this._init = init;
+    this._mutable = mutable;
   }
 }
 
 /**
- * Returns a new variable declaration statement node.
+ * Returns a new variable declaration statement node (for
+ * variables declared with keyword `var`; these are mutable
+ * variables).
  */
 function varDeclaration(name: TokenObj, init: ExpressionNode) {
-  return new VARIABLE_DECLARATION(name, init);
+  return new VARIABLE_DECLARATION(name, init, true);
+}
+
+/**
+ * Returns a new variable declaration statement node (for
+ * variables declared with keyword `let`; these are immutable
+ * variables).
+ */
+function letDeclaration(name: TokenObj, init: ExpressionNode) {
+  return new VARIABLE_DECLARATION(name, init, false);
 }
 
 /** An object representing a loop statement node. */
@@ -2829,6 +2818,10 @@ export function syntaxAnalysis(source: string) {
     }
   };
 
+  /** Parses a factorial expression. */
+  const factorial: Parslet<ExpressionNode> = (op, node) =>
+    state.newExpression(unaryPostfix(op, node));
+
   /** Parses a parenthesized expression. */
   const primary = () => {
     const innerExpression = expr();
@@ -2840,6 +2833,9 @@ export function syntaxAnalysis(source: string) {
     }
     return innerExpression.map((e) => parend(e));
   };
+
+  const varname: Parslet<ExpressionNode> = (op) =>
+    state.newExpression(variable(op));
 
   /**
    * The rules table comprises mappings from every
@@ -2864,14 +2860,14 @@ export function syntaxAnalysis(source: string) {
     [TOKEN.COMMA]: [____, ____, ___o],
 
     // infix operations - arithmetic
-    [TOKEN.PLUS]: [prefix, infix, BP.SUM],
-    [TOKEN.MINUS]: [prefix, infix, BP.DIFFERENCE],
-    [TOKEN.STAR]: [____, infix, BP.PRODUCT],
-    [TOKEN.SLASH]: [____, infix, BP.QUOTIENT],
-    [TOKEN.CARET]: [____, infix, BP.POWER],
-    [TOKEN.PERCENT]: [____, infix, BP.QUOTIENT],
-    [TOKEN.DIV]: [____, infix, BP.QUOTIENT],
-    [TOKEN.REM]: [____, infix, BP.QUOTIENT],
+    [TOKEN.PLUS]: [prefix, infix, BP.SUM], // done
+    [TOKEN.MINUS]: [prefix, infix, BP.DIFFERENCE], // done
+    [TOKEN.STAR]: [____, infix, BP.PRODUCT], // done
+    [TOKEN.SLASH]: [____, infix, BP.QUOTIENT], // done
+    [TOKEN.CARET]: [____, infix, BP.POWER], // done
+    [TOKEN.PERCENT]: [____, infix, BP.QUOTIENT], // done
+    [TOKEN.DIV]: [____, infix, BP.QUOTIENT], // done
+    [TOKEN.REM]: [____, infix, BP.QUOTIENT], // done
 
     // infix operations - relations
     [TOKEN.EQUAL_EQUAL]: [____, infix, BP.EQ],
@@ -2892,18 +2888,18 @@ export function syntaxAnalysis(source: string) {
     [TOKEN.COLON_EQUAL]: [____, ____, ___o],
 
     // literals
-    [TOKEN.INTEGER]: [literal, ____, BP.ATOM],
-    [TOKEN.FLOAT]: [literal, ____, BP.ATOM],
-    [TOKEN.FRACTION]: [literal, ____, BP.ATOM],
-    [TOKEN.STRING]: [literal, ____, BP.ATOM],
+    [TOKEN.INTEGER]: [literal, ____, BP.ATOM], // done
+    [TOKEN.FLOAT]: [literal, ____, BP.ATOM], // done
+    [TOKEN.FRACTION]: [literal, ____, BP.ATOM], // done
+    [TOKEN.STRING]: [literal, ____, BP.ATOM], // done
     [TOKEN.SYM_STRING]: [____, ____, ___o],
-    [TOKEN.BOOLEAN]: [literal, ____, BP.ATOM],
-    [TOKEN.NAN]: [literal, ____, BP.ATOM],
-    [TOKEN.INF]: [literal, ____, BP.ATOM],
-    [TOKEN.NIL]: [literal, ____, BP.ATOM],
-    [TOKEN.UNDEFINED]: [literal, ____, BP.ATOM],
+    [TOKEN.BOOLEAN]: [literal, ____, BP.ATOM], // done
+    [TOKEN.NAN]: [literal, ____, BP.ATOM], // done
+    [TOKEN.INF]: [literal, ____, BP.ATOM], // done
+    [TOKEN.NIL]: [literal, ____, BP.ATOM], // done
+    [TOKEN.UNDEFINED]: [literal, ____, BP.ATOM], // done
 
-    [TOKEN.BANG]: [____, ____, ___o],
+    [TOKEN.BANG]: [____, factorial, BP.POSTFIX], // done
 
     [TOKEN.PLUS_PLUS]: [____, ____, ___o],
     [TOKEN.MINUS_MINUS]: [____, ____, ___o],
@@ -2917,7 +2913,7 @@ export function syntaxAnalysis(source: string) {
     [TOKEN.STAR_MINUS]: [____, ____, ___o],
     [TOKEN.STAR_STAR]: [____, ____, ___o],
 
-    [TOKEN.SYMBOL]: [____, ____, ___o],
+    [TOKEN.SYMBOL]: [varname, ____, BP.ATOM],
 
     [TOKEN.AND]: [____, ____, ___o],
     [TOKEN.OR]: [____, ____, ___o],
@@ -2961,6 +2957,7 @@ export function syntaxAnalysis(source: string) {
    */
   const precof = (t: TOKEN): BP => rules[t][2];
 
+  /** Parses a single expression. */
   const expr = (minBP: number = BP.LOWEST): Either<ERROR, ExpressionNode> => {
     let token = state.next();
     const pre = prefixRule(token._token);
@@ -2980,6 +2977,71 @@ export function syntaxAnalysis(source: string) {
     return lhs;
   };
 
+  /** Parses a block statement. */
+  const blockStatement = () => {
+    const statements: StatementNode[] = [];
+    while (!state.atEnd() && !state.check(TOKEN.END)) {
+      const stmt = STATEMENT();
+      if (stmt.isLeft()) return stmt;
+      statements.push(stmt.unwrap());
+    }
+    if (!state.nextIs(TOKEN.END)) {
+      return state.error(
+        `Expected keyword "end" to close the block`,
+        state._current._line
+      );
+    }
+    return state.newStatement(block(statements));
+  };
+
+  /** Parses an expression statement. */
+  const expressionStatement = () => {
+    const out = expr();
+    if (out.isLeft()) return out;
+    const e = out.unwrap();
+    if (state.nextIs(TOKEN.SEMICOLON) || state.implicitSemicolonAllowed()) {
+      return state.newStatement(expression(e));
+    }
+    return state.error(
+      `Expected a ";" to end the statement.`,
+      state._current._line
+    );
+  };
+
+  const variableDeclaration = (prev: TOKEN.LET | TOKEN.VAR) => {
+    const name = state.next();
+    if (!name.isToken(TOKEN.SYMBOL)) {
+      return state.error(`Expected a valid identifier`, name._line);
+    }
+    if (!state.nextIs(TOKEN.COLON_EQUAL)) {
+      return state.error(
+        `Expected an assignment operator`,
+        state._current._line
+      );
+    }
+    const init = expr();
+    state.nextIs(TOKEN.SEMICOLON);
+    if (init.isLeft()) return init;
+    const value = init.unwrap();
+    return state.newStatement(
+      (prev === TOKEN.LET ? letDeclaration : varDeclaration)(name, value)
+    );
+  };
+
+  /** Parses a statement. */
+  const STATEMENT = (): Either<ERROR, StatementNode> => {
+    if (state.nextIs(TOKEN.VAR)) {
+      return variableDeclaration(TOKEN.VAR);
+    }
+    if (state.nextIs(TOKEN.LET)) {
+      return variableDeclaration(TOKEN.LET);
+    }
+    if (state.nextIs(TOKEN.BEGIN)) {
+      return blockStatement();
+    }
+    return expressionStatement();
+  };
+
   return {
     /** Returns a syntax analysis of a single expression. */
     parsex(): Either<ERROR, ExpressionNode> {
@@ -2989,6 +3051,19 @@ export function syntaxAnalysis(source: string) {
         const out = expr();
         return out;
       }
+    },
+    /** Returns a syntax analysis of a program. */
+    parseprog() {
+      if (state._error !== null) {
+        return left(state._error);
+      }
+      const statements: StatementNode[] = [];
+      while (!state.atEnd()) {
+        const statement = STATEMENT();
+        if (statement.isLeft()) return statement;
+        statements.push(statement.unwrap());
+      }
+      return right(statements);
     },
   };
 }
@@ -3003,13 +3078,33 @@ function runtimeError(message: string) {
   return new RuntimeError(message);
 }
 
+class Environment {
+  private dictionary: Map<string, Expression> = new Map();
+
+  /**
+   * Stores the (`name`, `value`) pair in this
+   * environment's `dictionary`.
+   */
+  define(name: string, value: Expression) {
+    this.dictionary.set(name, value);
+    return value;
+  }
+}
+
 class Interpreter implements Visitor<Expression> {
   evaluate(expr: ExpressionNode) {
     return expr.accept(this);
   }
-  interpret(expr: ExpressionNode) {
+  execute(statement: StatementNode) {
+    return statement.accept(this);
+  }
+  interpret(statements: StatementNode[]) {
     try {
-      const value = this.evaluate(expr);
+      let value: Expression = nil();
+      for (let i = 0; i < statements.length; i++) {
+        const stmt = statements[i];
+        stmt && (value = this.execute(stmt));
+      }
       return right(value);
     } catch (error: unknown) {
       const e = error as ERROR;
@@ -3067,16 +3162,16 @@ class Interpreter implements Visitor<Expression> {
     );
   }
   call(node: Call): Expression {
-    throw new Error("Method not implemented.");
+    throw new Error("call method not implemented.");
   }
   propRead(node: PropRead): Expression {
-    throw new Error("Method not implemented.");
+    throw new Error("propRead method not implemented.");
   }
   propWrite(node: PropWrite): Expression {
-    throw new Error("Method not implemented.");
+    throw new Error("propWrite method not implemented.");
   }
   parend(node: Parend): Expression {
-    throw new Error("Method not implemented.");
+    return this.evaluate(node._expression);
   }
   unex(node: Unex): Expression {
     const arg = this.evaluate(node._arg);
@@ -3088,43 +3183,46 @@ class Interpreter implements Visitor<Expression> {
       case TOKEN.PLUS: {
         return product(int(1), arg);
       }
+      case TOKEN.BANG: {
+        return corefn("!", [arg]);
+      }
       default: {
         throw runtimeError(`Unrecognized unary operator: ${op._lexeme}`);
       }
     }
   }
   branch(node: Branch): Expression {
-    throw new Error("Method not implemented.");
+    throw new Error("branch method not implemented.");
   }
   ternary(node: Ternary): Expression {
-    throw new Error("Method not implemented.");
+    throw new Error("ternary method not implemented.");
   }
   variable(node: Variable): Expression {
-    throw new Error("Method not implemented.");
+    return sym(node._symbol._lexeme);
   }
   lit(node: Lit): Expression {
     return node._value;
   }
   BLOCK(node: BLOCK): Expression {
-    throw new Error("Method not implemented.");
+    throw new Error("block method not implemented.");
   }
   EXPRESSION(node: EXPRESSION): Expression {
-    throw new Error("Method not implemented.");
+    return this.evaluate(node._expression);
   }
   CONDITIONAL(node: CONDITIONAL): Expression {
-    throw new Error("Method not implemented.");
+    throw new Error("conditional method not implemented.");
   }
   PRINT(node: PRINT): Expression {
-    throw new Error("Method not implemented.");
+    throw new Error("print method not implemented.");
   }
   FUNCTION_DECLARATION(node: FUNCTION_DECLARATION): Expression {
-    throw new Error("Method not implemented.");
+    throw new Error("func declaration method not implemented.");
   }
   VARIABLE_DECLARATION(node: VARIABLE_DECLARATION): Expression {
-    throw new Error("Method not implemented.");
+    throw new Error("var declaration method not implemented.");
   }
   LOOP(node: LOOP): Expression {
-    throw new Error("Method not implemented.");
+    throw new Error("loop method not implemented.");
   }
 }
 
@@ -3138,7 +3236,7 @@ export function isExpression(x: any): x is Expression {
 
 export function interpret(code: string) {
   const interpreter = new Interpreter();
-  const s = syntaxAnalysis(code).parsex();
+  const s = syntaxAnalysis(code).parseprog();
   if (s.isLeft()) {
     return s.unwrap();
   } else {

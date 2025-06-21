@@ -2,19 +2,13 @@ import MdxLayout from "../../components/mdx-layout";
 
 # Representing Rational Numbers
 
-Ora provides native support for rational numbers. In Ora, an integer divided by an integer is interpreted as a rational number. To perform real division, at least one of the operands must be a float. For example, writing the expression
+Ora provides native support for rational numbers. In Ora, rational numbers are written with the notation:
 
 $$
-	\texttt{1/2}
+	a ~|~ b,
 $$
 
-is interpreted as the rational number ${1/2.}$ Writing:
-
-$$
-	\texttt{1.0/2.0}
-$$
-
-is reduced to the floating point value ${0.5.}$ This article presents and explains the algorithms Ora uses for rational number arithmetic.
+where ${a}$ and ${b}$ are integers. For example, the number ${1/2}$ is written `1|2`.
 
 ## The Fraction Class
 Simple rational numbers are represented in Ora with the `Fraction` class. The two key properties of `Fraction` objects (instances of the `Fraction` class) are `_numerator` and `_denominator`. These two properties follow from the common definition of a rational number:
@@ -81,7 +75,31 @@ This is an elegant algorithm. But, we risk entering a stack overflow with large 
    3. __return__ ${a}$
 </Procedure>
 
-The iterative approach, while not as elegant, gets the job done safely. 
+The iterative approach, while not as elegant, gets the job done safely. With this `GCF` function, we can implement a `simplifyFraction` function:   
+
+<Procedure>
+
+> __*algorithm*__. ~simplifyFraction~. 
+
+- __input__
+  - ${a:}$ an integer, corresponding to a numerator.
+  - ${b:}$ an integer, corresponding to a denominator.
+- __output__
+  - a pair ${(a',b'),}$ corresponding to the fraction ${a'/b',}$ the simplest form of the fraction ${a/b.}$
+
+1. __function__ ~simplifyFraction~`(`${a}$, ${b}$`)`:
+   1. ${s}$ ${\leftarrow}$ sgn`(` ${a}$ `)` ${\times}$ sgn`(` ${b}$ `)`
+   2. ${n \leftarrow \left| a \right|}$
+   3. ${d \leftarrow \left| b \right|}$
+   4. ${f \leftarrow \text{GCF}(n,d)}$
+   5. __return__ ${({sn}/f, {d}/f)}$ 
+
+
+
+
+</Procedure>
+
+<ProcedureCaption>Implemented in the source code under `Fraction.simplify`.</ProcedureCaption>
 
 
 

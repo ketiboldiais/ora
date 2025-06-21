@@ -6,11 +6,15 @@ import {syntaxAnalysis, interpret, isExpression, isERROR, sexprString} from "@or
 import {treestring} from "@ora/engine/utils_dev";
 
 export default function Home() {
-  const r = interpret(`5 = 2 + 3`);
+  const test = `
+  let x := 5;
+  `
+  const r = interpret(test);
   if (isERROR(r)) {
     console.log(r.message);
   } else {
-    console.log(sexprString(r.sexpr()));
+    // console.log(r);
+    console.log(r.toString());
   }
   
   // console.log(j.map(x => x.));
